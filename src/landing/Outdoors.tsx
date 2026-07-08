@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
 /**
  * The world outside the window — a calm rainy dawn, styled like the layered
@@ -194,26 +195,27 @@ function Tree() {
     () => new THREE.MeshBasicMaterial({ color: '#1a2030', toneMapped: false, fog: false }),
     [],
   )
-  // lobed crown: a central mass with distinct puffs so the outline reads "tree"
-  const lobes = useMemo(() => {
-    const rnd = mulberry32(11)
-    const arr: { p: [number, number, number]; s: number }[] = [{ p: [0, 3.1, 0], s: 1.25 }]
-    for (let i = 0; i < 7; i++) {
-      const a = (i / 7) * Math.PI * 2 + 0.4
-      arr.push({
-        p: [
-          Math.cos(a) * (1.0 + rnd() * 0.45),
-          2.75 + Math.sin(a * 2.3) * 0.55 + rnd() * 0.4,
-          Math.sin(a) * (0.85 + rnd() * 0.35),
-        ],
-        s: 0.6 + rnd() * 0.4,
-      })
-    }
-    arr.push({ p: [0.2, 4.0, 0], s: 0.8 }) // top puff
-    arr.push({ p: [-1.5, 2.5, 0], s: 0.5 }) // low side puff for asymmetry
-    return arr
-  }, [])
-  const baseY = useMemo(() => terrainH(-24, -30) - 0.15, [])
+  // A canopy of heavily-overlapping ellipsoids arranged into a rounded, slightly
+  // asymmetric crown — the union reads as one graceful silhouette, not broccoli.
+  const canopy: { p: [number, number, number]; s: [number, number, number] }[] = [
+    // broad base ring
+    { p: [-1.0, 2.5, 0.2], s: [1.35, 1.05, 1.2] },
+    { p: [1.0, 2.5, -0.2], s: [1.35, 1.05, 1.2] },
+    { p: [0.1, 2.4, -0.95], s: [1.2, 1.0, 1.15] },
+    { p: [-0.1, 2.45, 0.95], s: [1.2, 1.0, 1.15] },
+    // full mid mass
+    { p: [-0.45, 3.05, 0.1], s: [1.35, 1.3, 1.3] },
+    { p: [0.6, 3.1, -0.05], s: [1.45, 1.35, 1.35] },
+    { p: [0.05, 3.0, 0.55], s: [1.25, 1.2, 1.2] },
+    // rounded top
+    { p: [0.15, 3.7, 0.0], s: [1.05, 1.0, 1.05] },
+    { p: [-0.45, 3.55, 0.2], s: [0.8, 0.85, 0.8] },
+    { p: [0.35, 4.15, 0.05], s: [0.6, 0.72, 0.6] }, // graceful tapering tip
+    // asymmetric outliers so the outline isn't a perfect dome
+    { p: [1.55, 2.75, 0.25], s: [0.72, 0.62, 0.68] },
+    { p: [-1.6, 2.8, -0.15], s: [0.66, 0.58, 0.64] },
+  ]
+  const baseY = useMemo(() => terrainH(-26, -30) - 0.15, [])
 
   useFrame(({ clock }) => {
     // a distant tree barely breathes
@@ -221,20 +223,22 @@ function Tree() {
   })
 
   return (
-    <group ref={group} position={[-24, baseY, -30]} scale={0.85}>
+    // off the window's centerline (was blocked by the central mullion) — now
+    // seated in the left pane
+    <group ref={group} position={[-26, baseY, -30]} scale={0.92}>
       {/* visible trunk with a gentle taper and two limb stubs into the crown */}
-      <mesh position={[0, 1.15, 0]} material={trunkMat}>
-        <cylinderGeometry args={[0.12, 0.24, 2.4, 7]} />
+      <mesh position={[0, 1.05, 0]} material={trunkMat}>
+        <cylinderGeometry args={[0.12, 0.24, 2.2, 7]} />
       </mesh>
-      <mesh position={[0.4, 2.2, 0]} rotation={[0, 0, -0.65]} material={trunkMat}>
+      <mesh position={[0.4, 2.05, 0]} rotation={[0, 0, -0.65]} material={trunkMat}>
         <cylinderGeometry args={[0.05, 0.1, 1.0, 5]} />
       </mesh>
-      <mesh position={[-0.35, 2.35, 0.1]} rotation={[0.15, 0, 0.6]} material={trunkMat}>
+      <mesh position={[-0.35, 2.2, 0.1]} rotation={[0.15, 0, 0.6]} material={trunkMat}>
         <cylinderGeometry args={[0.05, 0.09, 0.9, 5]} />
       </mesh>
-      {lobes.map((l, i) => (
+      {canopy.map((l, i) => (
         <mesh key={i} position={l.p} material={crownMat} scale={l.s}>
-          <icosahedronGeometry args={[1, 2]} />
+          <icosahedronGeometry args={[1, 3]} />
         </mesh>
       ))}
     </group>
@@ -299,26 +303,65 @@ function Grass() {
 }
 
 // ---------------------------------------------------------------- flowers
-/** Tiny wildflowers scattered through the grass — muted dots on thin stems. */
+/** A single daisy-like bloom: five splayed petals around a raised center. */
+function makeFlowerGeometry() {
+  const parts: THREE.BufferGeometry[] = []
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2
+    const petal = new THREE.SphereGeometry(0.07, 6, 4)
+    const s = new THREE.Matrix4().makeScale(0.72, 0.32, 1.75) // long, flat petal
+    const rx = new THREE.Matrix4().makeRotationX(-0.5) // cup upward
+    const ry = new THREE.Matrix4().makeRotationY(a)
+    const m = new THREE.Matrix4().multiply(ry).multiply(rx).multiply(s)
+    const dir = new THREE.Vector3(Math.sin(a), 0, Math.cos(a))
+    m.premultiply(new THREE.Matrix4().makeTranslation(dir.x * 0.1, 0.04, dir.z * 0.1))
+    petal.applyMatrix4(m)
+    parts.push(petal)
+  }
+  const center = new THREE.SphereGeometry(0.055, 8, 6)
+  center.applyMatrix4(new THREE.Matrix4().makeTranslation(0, 0.06, 0))
+  parts.push(center)
+  return mergeGeometries(parts)!
+}
+
+/** Wildflowers with stems + real petals, placed so no two overlap. */
 function Flowers() {
   const heads = useRef<THREE.InstancedMesh>(null)
   const stems = useRef<THREE.InstancedMesh>(null)
-  const COUNT = 110
+  const flowerGeo = useMemo(makeFlowerGeometry, [])
+
   const data = useMemo(() => {
     const rnd = mulberry32(4)
-    const palette = ['#c4bda8', '#b2888c', '#c2a96e', '#9d94b5']
-    return Array.from({ length: COUNT }, () => {
+    const palette = ['#d8cfb4', '#c48f92', '#cbb271', '#a79ec2', '#cf9d6c']
+    const MIN = 1.1 // no two blooms closer than this (world units)
+    const placed: { x: number; z: number }[] = []
+    const out: {
+      x: number
+      z: number
+      y: number
+      h: number
+      phase: number
+      color: THREE.Color
+      tilt: number
+    }[] = []
+    let attempts = 0
+    while (out.length < 85 && attempts < 6000) {
+      attempts++
       const x = -25 + rnd() * 20
       const z = -12.5 - rnd() * 15
-      return {
+      if (placed.some((p) => (p.x - x) ** 2 + (p.z - z) ** 2 < MIN * MIN)) continue
+      placed.push({ x, z })
+      out.push({
         x,
         z,
         y: terrainH(x, z),
-        h: 0.28 + rnd() * 0.3, // stem height
+        h: 0.32 + rnd() * 0.34,
         phase: rnd() * 6.28,
         color: new THREE.Color(palette[Math.floor(rnd() * palette.length)]),
-      }
-    })
+        tilt: (rnd() - 0.5) * 0.5,
+      })
+    }
+    return out
   }, [])
   const dummy = useMemo(() => new THREE.Object3D(), [])
 
@@ -332,16 +375,16 @@ function Flowers() {
     if (!heads.current || !stems.current) return
     const t = clock.elapsedTime
     data.forEach((d, i) => {
-      const sway = Math.sin(t * 1.3 + d.phase) * (0.05 + weather.wind * 0.06)
-      // stem
-      dummy.position.set(d.x + sway * d.h, d.y + d.h * 0.5, d.z)
-      dummy.rotation.set(0, 0, sway)
+      const sway = Math.sin(t * 1.25 + d.phase) * (0.05 + weather.wind * 0.06)
+      // stem: a bent line from the ground up
+      dummy.position.set(d.x + sway * d.h * 0.5, d.y + d.h * 0.5, d.z)
+      dummy.rotation.set(0, 0, sway + d.tilt * 0.3)
       dummy.scale.set(1, d.h, 1)
       dummy.updateMatrix()
       stems.current!.setMatrixAt(i, dummy.matrix)
-      // head
-      dummy.position.set(d.x + sway * d.h * 1.6, d.y + d.h, d.z)
-      dummy.rotation.set(0, 0, 0)
+      // bloom nodding on the stem tip
+      dummy.position.set(d.x + sway * d.h, d.y + d.h, d.z)
+      dummy.rotation.set(d.tilt, d.phase, sway * 1.4)
       dummy.scale.setScalar(1)
       dummy.updateMatrix()
       heads.current!.setMatrixAt(i, dummy.matrix)
@@ -352,12 +395,11 @@ function Flowers() {
 
   return (
     <group>
-      <instancedMesh ref={stems} args={[undefined as never, undefined as never, COUNT]} frustumCulled={false}>
-        <cylinderGeometry args={[0.012, 0.016, 1, 4]} />
-        <meshBasicMaterial color={'#20261a'} toneMapped={false} fog={false} />
+      <instancedMesh ref={stems} args={[undefined as never, undefined as never, 85]} frustumCulled={false}>
+        <cylinderGeometry args={[0.011, 0.016, 1, 4]} />
+        <meshBasicMaterial color={'#28311e'} toneMapped={false} fog={false} />
       </instancedMesh>
-      <instancedMesh ref={heads} args={[undefined as never, undefined as never, COUNT]} frustumCulled={false}>
-        <icosahedronGeometry args={[0.05, 1]} />
+      <instancedMesh ref={heads} args={[flowerGeo, undefined as never, 85]} frustumCulled={false}>
         <meshBasicMaterial toneMapped={false} fog={false} />
       </instancedMesh>
     </group>
