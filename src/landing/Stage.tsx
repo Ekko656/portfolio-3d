@@ -4,6 +4,8 @@ import { Environment, Lightformer, RoundedBox } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
 import So101Arm from '../components/arm/So101Arm'
+import Window from './Window'
+import Outdoors from './Outdoors'
 
 /**
  * The warm dim workshop at night. The real SO-101 on a workbench, fixed
@@ -54,34 +56,13 @@ function Workbench() {
   )
 }
 
-/** Floor + a back wall with a moonlit window that motivates the cool rim. */
+/** Floor only — the back wall now lives in <Window> (it has the opening cut in). */
 function Room() {
   return (
-    <group>
-      <mesh position={[0, -2, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[80, 80]} />
-        <meshStandardMaterial color={FLOOR} metalness={0.25} roughness={0.85} />
-      </mesh>
-      <mesh position={[0, 3, -3.4]} receiveShadow>
-        <planeGeometry args={[80, 24]} />
-        <meshStandardMaterial color={'#0c0a09'} metalness={0.1} roughness={0.95} />
-      </mesh>
-      {/* window frame + cool moonlit pane (emissive, dim) */}
-      <group position={[-4.2, 3.1, -3.35]}>
-        <mesh position={[0, 0, 0.02]}>
-          <planeGeometry args={[3.0, 3.8]} />
-          <meshStandardMaterial color={'#0e1626'} emissive={RIM} emissiveIntensity={0.5} />
-        </mesh>
-        <mesh position={[0, 0, 0.03]}>
-          <boxGeometry args={[3.05, 0.06, 0.06]} />
-          {mMetal}
-        </mesh>
-        <mesh position={[0, 0, 0.03]}>
-          <boxGeometry args={[0.06, 3.85, 0.06]} />
-          {mMetal}
-        </mesh>
-      </group>
-    </group>
+    <mesh position={[0, -2, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      <planeGeometry args={[80, 80]} />
+      <meshStandardMaterial color={FLOOR} metalness={0.25} roughness={0.85} />
+    </mesh>
   )
 }
 
@@ -131,7 +112,9 @@ export default function Stage() {
         <Lightformer intensity={0.25} color={PRACTICAL} position={[3, 1, 3]} scale={[3, 3, 1]} />
       </Environment>
 
+      <Outdoors />
       <Room />
+      <Window />
       <Workbench />
       <So101Arm />
 
