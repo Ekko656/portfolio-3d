@@ -343,9 +343,22 @@ function Flowers() {
       phase: number
       color: THREE.Color
       tilt: number
+      scale: number
     }[] = []
+    // one nearer, larger bloom in the window's bottom-left as foreground interest
+    out.push({
+      x: -8.2,
+      z: -7,
+      y: terrainH(-8.2, -7),
+      h: 0.55,
+      phase: 1.2,
+      color: new THREE.Color('#d8cfb4'),
+      tilt: 0.15,
+      scale: 2.1,
+    })
+    placed.push({ x: -8.2, z: -7 })
     let attempts = 0
-    while (out.length < 85 && attempts < 6000) {
+    while (out.length < 86 && attempts < 6000) {
       attempts++
       const x = -25 + rnd() * 20
       const z = -12.5 - rnd() * 15
@@ -359,10 +372,12 @@ function Flowers() {
         phase: rnd() * 6.28,
         color: new THREE.Color(palette[Math.floor(rnd() * palette.length)]),
         tilt: (rnd() - 0.5) * 0.5,
+        scale: 1,
       })
     }
     return out
   }, [])
+  const COUNT = data.length
   const dummy = useMemo(() => new THREE.Object3D(), [])
 
   useEffect(() => {
@@ -385,7 +400,7 @@ function Flowers() {
       // bloom nodding on the stem tip
       dummy.position.set(d.x + sway * d.h, d.y + d.h, d.z)
       dummy.rotation.set(d.tilt, d.phase, sway * 1.4)
-      dummy.scale.setScalar(1)
+      dummy.scale.setScalar(d.scale)
       dummy.updateMatrix()
       heads.current!.setMatrixAt(i, dummy.matrix)
     })
@@ -395,11 +410,11 @@ function Flowers() {
 
   return (
     <group>
-      <instancedMesh ref={stems} args={[undefined as never, undefined as never, 85]} frustumCulled={false}>
+      <instancedMesh ref={stems} args={[undefined as never, undefined as never, COUNT]} frustumCulled={false}>
         <cylinderGeometry args={[0.011, 0.016, 1, 4]} />
         <meshBasicMaterial color={'#28311e'} toneMapped={false} fog={false} />
       </instancedMesh>
-      <instancedMesh ref={heads} args={[flowerGeo, undefined as never, 85]} frustumCulled={false}>
+      <instancedMesh ref={heads} args={[flowerGeo, undefined as never, COUNT]} frustumCulled={false}>
         <meshBasicMaterial toneMapped={false} fog={false} />
       </instancedMesh>
     </group>
