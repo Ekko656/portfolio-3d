@@ -7,7 +7,7 @@ import So101Arm from '../components/arm/So101Arm'
 import Window from './Window'
 import Outdoors from './Outdoors'
 import Workstation from './Workstation'
-import GlbModel from './BlenderPrinter'
+import Printer3D from './Printer3D'
 import { concreteTexture, plywoodTexture, pegboardTexture, workbenchTexture, ceilingTexture } from './textures'
 
 /**
@@ -767,8 +767,8 @@ export default function Stage() {
         <group position={[0, DESK_Y, 0]}>
           <Workstation />
         </group>
-        {/* the Blender-modeled 3D printer, on the bench right */}
-        <GlbModel url="/models/printer.glb" position={[2.7, DESK_Y + 0.32, -0.35]} rotation={[0, -0.5, 0]} scale={0.42} />
+        {/* the 3D printer, on the bench right */}
+        <Printer3D position={[2.7, DESK_Y + 0.17, -0.4]} rotation={[0, -0.5, 0]} scale={0.6} />
         <BenchClutter />
         <So101Arm />
       </group>
