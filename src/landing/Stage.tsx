@@ -88,32 +88,17 @@ function Workbench() {
           {mSteelLt}
         </mesh>
         {[-0.35, 0.0, 0.35].map((dy) => (
-          <group key={dy} position={[0, DESK_Y - 0.55 + dy, DESK_D / 2 - 0.18]}>
+          <group key={dy} position={[0, DESK_Y - 0.55 + dy, DESK_D / 2 - 0.02]}>
             <mesh castShadow>
-              <boxGeometry args={[1.5, 0.3, 0.04]} />
+              <boxGeometry args={[1.62, 0.32, 0.04]} />
               <meshStandardMaterial color={'#43464c'} metalness={0.7} roughness={0.4} />
             </mesh>
-            <mesh position={[0, 0, 0.04]} castShadow>
-              <boxGeometry args={[0.7, 0.05, 0.05]} />
+            <mesh position={[0, 0, 0.05]} castShadow>
+              <boxGeometry args={[0.7, 0.05, 0.06]} />
               {mSteel}
             </mesh>
           </group>
         ))}
-      </group>
-      {/* bench vise clamped to the front-left edge */}
-      <group position={[-DESK_W / 2 + 1.1, DESK_Y + 0.02, DESK_D / 2 - 0.3]}>
-        <mesh position={[0, 0.12, 0]} castShadow>
-          <boxGeometry args={[0.4, 0.24, 0.3]} />
-          <meshStandardMaterial color={'#3a2622'} metalness={0.5} roughness={0.5} />
-        </mesh>
-        <mesh position={[0, 0.12, 0.28]} castShadow>
-          <boxGeometry args={[0.44, 0.28, 0.1]} />
-          <meshStandardMaterial color={'#3a2622'} metalness={0.5} roughness={0.5} />
-        </mesh>
-        <mesh position={[0, 0.12, 0.42]} rotation={[Math.PI / 2, 0, 0]} castShadow>
-          <cylinderGeometry args={[0.03, 0.03, 0.4, 8]} />
-          {mSteelLt}
-        </mesh>
       </group>
     </group>
   )
@@ -454,28 +439,6 @@ function BenchClutter() {
         </mesh>
       </group>
 
-      {/* coffee mug */}
-      <group position={[-3.55, 0.13, 0.6]}>
-        <mesh castShadow>
-          <cylinderGeometry args={[0.12, 0.1, 0.26, 20]} />
-          <meshStandardMaterial color={'#7a3b2a'} metalness={0.05} roughness={0.6} />
-        </mesh>
-        <mesh position={[0, 0.11, 0]}>
-          <cylinderGeometry args={[0.1, 0.1, 0.02, 20]} />
-          <meshStandardMaterial color={'#2a1a12'} roughness={0.3} metalness={0.2} />
-        </mesh>
-        <mesh position={[0.13, 0, 0]} rotation={[Math.PI / 2, 0, 0]}>
-          <torusGeometry args={[0.06, 0.018, 8, 14, Math.PI]} />
-          <meshStandardMaterial color={'#7a3b2a'} roughness={0.6} />
-        </mesh>
-      </group>
-
-      {/* a coil of hookup wire */}
-      <mesh position={[1.0, 0.06, 0.3]} rotation={[Math.PI / 2, 0, 0]} castShadow>
-        <torusGeometry args={[0.14, 0.035, 10, 24]} />
-        <meshStandardMaterial color={'#b23c3c'} roughness={0.6} metalness={0.1} />
-      </mesh>
-
       {/* power strip at the back with cables feeding the gear */}
       <group position={[-0.3, 0.04, -1.4]}>
         <mesh castShadow>
@@ -506,38 +469,21 @@ function Background() {
   const binColors = ['#3a4d63', '#7a3b2a', '#3f5a44', '#4a4438', '#2f4a52']
   return (
     <group>
-      {/* wall shelf with parts totes, left of the window on the back wall */}
-      <group position={[-7.4, 4.4, -3.2]}>
-        <mesh castShadow receiveShadow>
-          <boxGeometry args={[3.4, 0.1, 0.9]} />
-          <meshStandardMaterial color={'#2a2620'} metalness={0.3} roughness={0.7} />
-        </mesh>
-        {[-1.2, -0.45, 0.35, 1.15].map((x, i) => (
-          <mesh key={x} position={[x, 0.32, 0]} castShadow receiveShadow>
-            <boxGeometry args={[0.66, 0.5, 0.7]} />
-            <meshStandardMaterial color={binColors[i % binColors.length]} metalness={0.1} roughness={0.7} />
+      {/* narrow wall shelves left of the window (clear of it), on the back wall */}
+      {[4.5, 3.1].map((sy, si) => (
+        <group key={sy} position={[-6.95, sy, -3.24]}>
+          <mesh castShadow receiveShadow>
+            <boxGeometry args={[1.9, 0.09, 0.72]} />
+            <meshStandardMaterial color={'#2a2620'} metalness={0.3} roughness={0.7} />
           </mesh>
-        ))}
-      </group>
-      {/* a second lower shelf with boxes + a coil */}
-      <group position={[-7.4, 2.4, -3.2]}>
-        <mesh castShadow receiveShadow>
-          <boxGeometry args={[3.4, 0.1, 0.9]} />
-          <meshStandardMaterial color={'#2a2620'} metalness={0.3} roughness={0.7} />
-        </mesh>
-        <mesh position={[-0.9, 0.4, 0]} castShadow>
-          <boxGeometry args={[0.9, 0.7, 0.7]} />
-          <meshStandardMaterial color={'#5a4636'} roughness={0.8} />
-        </mesh>
-        <mesh position={[0.3, 0.35, 0]} castShadow>
-          <boxGeometry args={[0.8, 0.6, 0.6]} />
-          <meshStandardMaterial color={'#3a3a40'} roughness={0.7} />
-        </mesh>
-        <mesh position={[1.2, 0.35, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow>
-          <torusGeometry args={[0.28, 0.08, 10, 24]} />
-          <meshStandardMaterial color={'#17140f'} roughness={0.85} />
-        </mesh>
-      </group>
+          {[-0.48, 0.48].map((x, i) => (
+            <mesh key={x} position={[x, 0.3, 0]} castShadow receiveShadow>
+              <boxGeometry args={[0.62, 0.48, 0.62]} />
+              <meshStandardMaterial color={binColors[(si * 2 + i) % binColors.length]} metalness={0.1} roughness={0.7} />
+            </mesh>
+          ))}
+        </group>
+      ))}
       {/* a taped-up schematic / blueprint poster on the back wall */}
       <mesh position={[6.5, 3.4, -3.34]}>
         <planeGeometry args={[1.9, 2.5]} />
@@ -554,25 +500,28 @@ function Background() {
           <meshStandardMaterial color={i ? '#b23c3c' : '#1a1a1e'} roughness={0.7} metalness={0.2} />
         </mesh>
       ))}
-      {/* a shop stool tucked under the bench-left */}
-      <group position={[-2.5, -2, 1.6]}>
-        <mesh position={[0, 1.0, 0]} castShadow>
-          <cylinderGeometry args={[0.32, 0.32, 0.09, 20]} />
-          <meshStandardMaterial color={'#2a1414'} metalness={0.2} roughness={0.6} />
+      {/* a shop stool in front of the bench (seat ~bench height, base on floor) */}
+      <group position={[-2.7, -2, 2.4]}>
+        {/* padded seat */}
+        <mesh position={[0, 2.0, 0]} castShadow receiveShadow>
+          <cylinderGeometry args={[0.44, 0.44, 0.14, 28]} />
+          <meshStandardMaterial color={'#2a1616'} metalness={0.15} roughness={0.6} />
         </mesh>
-        <mesh position={[0, 0.5, 0]} castShadow>
-          <cylinderGeometry args={[0.05, 0.05, 1.0, 10]} />
+        {/* central post */}
+        <mesh position={[0, 1.0, 0]} castShadow>
+          <cylinderGeometry args={[0.08, 0.1, 2.0, 14]} />
           {mSteel}
         </mesh>
-        {[0, 1, 2, 3].map((i) => {
-          const a = (i / 4) * Math.PI * 2
-          return (
-            <mesh key={i} position={[Math.cos(a) * 0.28, 0.05, Math.sin(a) * 0.28]} rotation={[0, -a, 0.35]} castShadow>
-              <cylinderGeometry args={[0.03, 0.03, 0.6, 8]} />
-              {mSteel}
-            </mesh>
-          )
-        })}
+        {/* footrest ring */}
+        <mesh position={[0, 0.6, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.34, 0.03, 8, 22]} />
+          {mSteelLt}
+        </mesh>
+        {/* flared base on the floor */}
+        <mesh position={[0, 0.06, 0]} castShadow receiveShadow>
+          <cylinderGeometry args={[0.48, 0.54, 0.1, 22]} />
+          {mSteel}
+        </mesh>
       </group>
     </group>
   )
