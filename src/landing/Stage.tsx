@@ -142,28 +142,119 @@ function Shell() {
   )
 }
 
-/** Floor-standing PC tower beside the bench, cabled up to the desk. */
-function PcTower({ position }: { position: [number, number, number] }) {
+const TEAL_RGB = '#2fe6d0'
+const rgbMat = (
+  <meshStandardMaterial color={'#9ffff0'} emissive={TEAL_RGB} emissiveIntensity={2.4} toneMapped={false} />
+)
+
+/** A case fan: dark square housing, an RGB ring, a hub and blades. Faces +Z. */
+function PcFan({ position, r, rotation = [0, 0, 0] }: { position: [number, number, number]; r: number; rotation?: [number, number, number] }) {
   return (
-    <group position={position}>
-      <RoundedBox args={[0.7, 1.7, 1.5]} radius={0.03} smoothness={3} position={[0, 0.85, 0]} castShadow receiveShadow>
-        <meshStandardMaterial color={'#1a1c20'} metalness={0.4} roughness={0.5} />
+    <group position={position} rotation={rotation as unknown as THREE.Euler}>
+      <RoundedBox args={[r * 2.1, r * 2.1, 0.06]} radius={0.03} smoothness={2}>
+        <meshStandardMaterial color={'#111214'} metalness={0.3} roughness={0.6} />
       </RoundedBox>
-      {/* glass side panel with a faint interior glow */}
-      <mesh position={[0.36, 0.85, 0]}>
-        <planeGeometry args={[1.3, 1.5]} />
-        <meshStandardMaterial color={'#0a1016'} emissive={'#123'} emissiveIntensity={0.5} metalness={0.1} roughness={0.1} transparent opacity={0.55} />
+      <mesh position={[0, 0, 0.035]}>
+        <torusGeometry args={[r * 0.9, 0.022, 10, 30]} />
+        {rgbMat}
       </mesh>
-      {/* front intake + power LED */}
-      <mesh position={[0, 1.55, 0.76]}>
-        <boxGeometry args={[0.5, 0.03, 0.02]} />
-        <meshStandardMaterial color={'#6ad0ff'} emissive={'#2a86c9'} emissiveIntensity={2.5} toneMapped={false} />
+      <mesh position={[0, 0, 0.03]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[r * 0.3, r * 0.3, 0.06, 16]} />
+        <meshStandardMaterial color={'#0a0a0c'} metalness={0.2} roughness={0.5} />
       </mesh>
-      {/* cable bundle rising toward the desk */}
-      <mesh position={[0, 1.75, -0.3]} rotation={[0.5, 0, 0]}>
-        <cylinderGeometry args={[0.05, 0.05, 0.9, 6]} />
-        <meshStandardMaterial color={'#0d0d0f'} roughness={0.9} />
+      {Array.from({ length: 7 }).map((_, i) => (
+        <mesh key={i} position={[0, 0, 0.03]} rotation={[0, 0, (i / 7) * Math.PI * 2]}>
+          <boxGeometry args={[r * 1.5, 0.02, 0.03]} />
+          <meshStandardMaterial color={'#17181b'} metalness={0.1} roughness={0.6} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+/** A detailed gaming PC tower with a glass front revealing the RGB interior. */
+function PcTower({ position, rotation = [0, 0, 0] }: { position: [number, number, number]; rotation?: [number, number, number] }) {
+  const W = 1.0, H = 1.85, D = 1.7
+  const CASE = <meshStandardMaterial color={'#17181c'} metalness={0.45} roughness={0.45} />
+  return (
+    <group position={position} rotation={rotation as unknown as THREE.Euler}>
+      {/* chassis panels (open front, +Z) */}
+      <RoundedBox args={[W, 0.06, D]} radius={0.02} position={[0, 0.03, 0]} castShadow receiveShadow>{CASE}</RoundedBox>
+      <RoundedBox args={[W, 0.06, D]} radius={0.02} position={[0, H, 0]} castShadow>{CASE}</RoundedBox>
+      <RoundedBox args={[W, H, 0.06]} radius={0.02} position={[0, H / 2, -D / 2]} castShadow>{CASE}</RoundedBox>
+      <RoundedBox args={[0.06, H, D]} radius={0.02} position={[-W / 2, H / 2, 0]} castShadow>{CASE}</RoundedBox>
+      <RoundedBox args={[0.06, H, D]} radius={0.02} position={[W / 2, H / 2, 0]} castShadow>{CASE}</RoundedBox>
+      {/* PSU shroud along the bottom */}
+      <RoundedBox args={[W - 0.1, 0.34, D - 0.12]} radius={0.02} position={[0, 0.4, 0]} castShadow>
+        <meshStandardMaterial color={'#0e0f12'} metalness={0.4} roughness={0.5} />
+      </RoundedBox>
+      <mesh position={[0.15, 0.4, D / 2 - 0.1]}>
+        <boxGeometry args={[0.4, 0.02, 0.02]} />
+        {rgbMat}
       </mesh>
+      {/* motherboard on the back wall */}
+      <mesh position={[0, H / 2 + 0.15, -D / 2 + 0.07]}>
+        <boxGeometry args={[W - 0.16, H - 0.75, 0.03]} />
+        <meshStandardMaterial color={'#0e3524'} metalness={0.3} roughness={0.5} />
+      </mesh>
+      {/* GPU: horizontal card + underglow + two down-facing fans */}
+      <RoundedBox args={[W - 0.2, 0.16, 1.0]} radius={0.02} position={[0, 0.98, 0.12]} castShadow>
+        <meshStandardMaterial color={'#0a0a0c'} metalness={0.4} roughness={0.5} />
+      </RoundedBox>
+      <mesh position={[0, 0.9, 0.12]}>
+        <boxGeometry args={[W - 0.24, 0.02, 0.95]} />
+        {rgbMat}
+      </mesh>
+      <PcFan position={[0, 0.88, -0.15]} r={0.16} rotation={[Math.PI / 2, 0, 0]} />
+      <PcFan position={[0, 0.88, 0.35]} r={0.16} rotation={[Math.PI / 2, 0, 0]} />
+      {/* CPU tower cooler + top fan */}
+      <RoundedBox args={[0.3, 0.44, 0.3]} radius={0.02} position={[-0.14, 1.52, -0.32]} castShadow>
+        <meshStandardMaterial color={'#3a3d43'} metalness={0.85} roughness={0.3} />
+      </RoundedBox>
+      <PcFan position={[-0.14, 1.75, -0.32]} r={0.15} rotation={[-Math.PI / 2, 0, 0]} />
+      {/* RAM sticks with lit tops */}
+      {[0, 1, 2, 3].map((i) => (
+        <group key={i} position={[0.05 + i * 0.06, 1.42, -0.5]}>
+          <mesh><boxGeometry args={[0.04, 0.34, 0.14]} /><meshStandardMaterial color={'#0a0a0c'} metalness={0.3} roughness={0.5} /></mesh>
+          <mesh position={[0, 0.18, 0]}><boxGeometry args={[0.04, 0.02, 0.14]} />{rgbMat}</mesh>
+        </group>
+      ))}
+      {/* two front intake fans, just behind the glass */}
+      <PcFan position={[0, 0.72, D / 2 - 0.12]} r={0.24} />
+      <PcFan position={[0, 1.42, D / 2 - 0.12]} r={0.24} />
+      {/* front I/O strip on the top edge */}
+      <mesh position={[0, H - 0.02, D / 2 - 0.2]}><boxGeometry args={[0.5, 0.03, 0.06]} />{rgbMat}</mesh>
+      <mesh position={[-0.3, H - 0.02, D / 2 - 0.35]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.045, 0.045, 0.04, 16]} />
+        <meshStandardMaterial color={'#3a3d43'} metalness={0.8} roughness={0.35} />
+      </mesh>
+      {[-0.1, 0.02].map((x) => (
+        <mesh key={x} position={[x, H - 0.02, D / 2 - 0.35]}>
+          <boxGeometry args={[0.09, 0.04, 0.04]} />
+          <meshStandardMaterial color={'#0c0c0e'} metalness={0.6} roughness={0.4} />
+        </mesh>
+      ))}
+      {/* tempered-glass front panel */}
+      <mesh position={[0, H / 2, D / 2]}>
+        <boxGeometry args={[W - 0.1, H - 0.1, 0.02]} />
+        <meshStandardMaterial color={'#0b1418'} metalness={0.1} roughness={0.08} transparent opacity={0.22} />
+      </mesh>
+      {/* four thumbscrews on the glass */}
+      {[[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sy], i) => (
+        <mesh key={i} position={[sx * (W / 2 - 0.08), H / 2 + sy * (H / 2 - 0.08), D / 2 + 0.02]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.03, 0.03, 0.03, 8]} />
+          <meshStandardMaterial color={'#4a4d53'} metalness={0.85} roughness={0.3} />
+        </mesh>
+      ))}
+      {/* feet */}
+      {[[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sz], i) => (
+        <mesh key={i} position={[sx * (W / 2 - 0.1), -0.02, sz * (D / 2 - 0.12)]}>
+          <cylinderGeometry args={[0.06, 0.06, 0.05, 10]} />
+          <meshStandardMaterial color={'#050505'} roughness={0.9} />
+        </mesh>
+      ))}
+      {/* interior glow */}
+      <pointLight position={[0, 1.0, 0.2]} intensity={0.6} distance={2.2} decay={2} color={TEAL_RGB} />
     </group>
   )
 }
@@ -683,7 +774,7 @@ export default function Stage() {
       </group>
 
       {/* floor dressing beside the bench */}
-      <GlbModel url="/models/pc.glb" position={[4.5, -2, -0.2]} rotation={[0, -0.7, 0]} scale={0.58} />
+      <PcTower position={[4.7, -2, -0.3]} rotation={[0, -0.6, 0]} />
       <ToolChest position={[-5.6, -2, -2.2]} />
 
       <EffectComposer>
