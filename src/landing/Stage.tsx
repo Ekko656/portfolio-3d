@@ -7,7 +7,7 @@ import So101Arm from '../components/arm/So101Arm'
 import Window from './Window'
 import Outdoors from './Outdoors'
 import Workstation from './Workstation'
-import BlenderPrinter from './BlenderPrinter'
+import GlbModel from './BlenderPrinter'
 import { concreteTexture, plywoodTexture, pegboardTexture, workbenchTexture, ceilingTexture } from './textures'
 
 /**
@@ -223,13 +223,23 @@ function ToolChest({ position }: { position: [number, number, number] }) {
 // ---- pegboard tools, arranged like a real, lived-in tool wall ---------------
 const toolMetal = <meshStandardMaterial color={'#3f4249'} metalness={0.7} roughness={0.42} />
 
-/** small peg hook the tool hangs from */
+const hookMat = <meshStandardMaterial color={'#3a3d43'} metalness={0.75} roughness={0.4} />
+
+/** A real peg hook that stands off the board and the tool hangs on. */
 function Hook({ x, y }: { x: number; y: number }) {
   return (
-    <mesh position={[x, y, 0.02]} rotation={[Math.PI / 2, 0, 0]}>
-      <torusGeometry args={[0.025, 0.008, 6, 10, Math.PI]} />
-      <meshStandardMaterial color={'#24262b'} metalness={0.6} roughness={0.5} />
-    </mesh>
+    <group position={[x, y, 0]}>
+      {/* peg out from the board */}
+      <mesh position={[0, 0, 0.06]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+        <cylinderGeometry args={[0.012, 0.012, 0.12, 6]} />
+        {hookMat}
+      </mesh>
+      {/* upturned tip the tool rests on */}
+      <mesh position={[0, -0.03, 0.11]} castShadow>
+        <cylinderGeometry args={[0.012, 0.012, 0.07, 6]} />
+        {hookMat}
+      </mesh>
+    </group>
   )
 }
 
@@ -378,6 +388,47 @@ function WallDressing() {
         <boxGeometry args={[4.8, 3.0, 0.05]} />
         <meshStandardMaterial color={'#241a12'} metalness={0.2} roughness={0.8} />
       </mesh>
+      {/* corner mounting screws holding the board to the wall */}
+      {[[0.55, 4.25], [4.65, 4.25], [0.55, 1.75], [4.65, 1.75]].map(([x, y], i) => (
+        <group key={i} position={[x, y, -3.28]}>
+          <mesh rotation={[Math.PI / 2, 0, 0]} castShadow>
+            <cylinderGeometry args={[0.055, 0.055, 0.04, 12]} />
+            <meshStandardMaterial color={'#4a4d53'} metalness={0.8} roughness={0.35} />
+          </mesh>
+          {/* phillips slot */}
+          <mesh position={[0, 0, 0.02]}>
+            <boxGeometry args={[0.06, 0.012, 0.01]} />
+            <meshStandardMaterial color={'#15161a'} metalness={0.6} roughness={0.5} />
+          </mesh>
+        </group>
+      ))}
+      {/* a small tool ledge/shelf across the board holding cans + a jar */}
+      <group position={[2.6, 2.15, -3.2]}>
+        <mesh castShadow receiveShadow>
+          <boxGeometry args={[3.4, 0.06, 0.34]} />
+          <meshStandardMaterial color={'#2a2119'} metalness={0.3} roughness={0.7} />
+        </mesh>
+        {/* two little support brackets */}
+        {[-1.5, 1.5].map((x) => (
+          <mesh key={x} position={[x, -0.09, 0.06]} castShadow>
+            <boxGeometry args={[0.05, 0.14, 0.22]} />
+            {mSteel}
+          </mesh>
+        ))}
+        {/* spray can, jar of bits, small box */}
+        <mesh position={[-1.1, 0.24, 0.02]} castShadow>
+          <cylinderGeometry args={[0.11, 0.11, 0.42, 14]} />
+          <meshStandardMaterial color={'#3a6a8a'} metalness={0.4} roughness={0.5} />
+        </mesh>
+        <mesh position={[-0.7, 0.2, 0.02]} castShadow>
+          <cylinderGeometry args={[0.12, 0.12, 0.34, 14]} />
+          <meshStandardMaterial color={'#6a5a3a'} metalness={0.1} roughness={0.5} transparent opacity={0.85} />
+        </mesh>
+        <mesh position={[0.9, 0.16, 0.02]} castShadow>
+          <boxGeometry args={[0.36, 0.3, 0.26]} />
+          <meshStandardMaterial color={'#7a3b2a'} metalness={0.1} roughness={0.7} />
+        </mesh>
+      </group>
       <Tools />
     </group>
   )
@@ -471,12 +522,12 @@ export default function Stage() {
           <Workstation />
         </group>
         {/* the Blender-modeled 3D printer, on the bench right */}
-        <BlenderPrinter position={[2.7, DESK_Y + 0.32, -0.35]} rotation={[0, -0.5, 0]} scale={0.42} />
+        <GlbModel url="/models/printer.glb" position={[2.7, DESK_Y + 0.32, -0.35]} rotation={[0, -0.5, 0]} scale={0.42} />
         <So101Arm />
       </group>
 
-      {/* floor dressing beside the bench, against the wall */}
-      <PcTower position={[5.2, -2, -2.4]} />
+      {/* floor dressing beside the bench */}
+      <GlbModel url="/models/pc.glb" position={[4.5, -2, -0.2]} rotation={[0, -0.7, 0]} scale={0.58} />
       <ToolChest position={[-5.6, -2, -2.2]} />
 
       <EffectComposer>

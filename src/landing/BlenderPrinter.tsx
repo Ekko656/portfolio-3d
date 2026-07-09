@@ -2,9 +2,19 @@ import { useMemo } from 'react'
 import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 
-/** The Blender-modeled 3D printer (public/models/printer.glb), placed on the bench. */
-export default function BlenderPrinter(props: { position?: [number, number, number]; rotation?: [number, number, number]; scale?: number }) {
-  const { scene } = useGLTF('/models/printer.glb')
+/** Loads a Blender-exported GLB (printer, PC, …) and places it. */
+export default function GlbModel({
+  url,
+  position,
+  rotation,
+  scale,
+}: {
+  url: string
+  position?: [number, number, number]
+  rotation?: [number, number, number]
+  scale?: number
+}) {
+  const { scene } = useGLTF(url)
   const model = useMemo(() => {
     const c = scene.clone(true)
     c.traverse((o) => {
@@ -16,7 +26,8 @@ export default function BlenderPrinter(props: { position?: [number, number, numb
     })
     return c
   }, [scene])
-  return <primitive object={model} {...props} />
+  return <primitive object={model} position={position} rotation={rotation} scale={scale} />
 }
 
 useGLTF.preload('/models/printer.glb')
+useGLTF.preload('/models/pc.glb')
