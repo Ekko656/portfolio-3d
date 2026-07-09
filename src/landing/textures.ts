@@ -100,6 +100,66 @@ export function plywoodTexture(repeat: [number, number] = [3, 2]) {
   return finish(c, repeat)
 }
 
+/** Worn workbench wood top: planks with grain, scuffs and stains. */
+export function workbenchTexture(repeat: [number, number] = [2, 1]) {
+  const { c, ctx } = canvas(512)
+  ctx.fillStyle = '#4a3320'
+  ctx.fillRect(0, 0, 512, 512)
+  // planks
+  const planks = 5
+  for (let p = 0; p < planks; p++) {
+    const y0 = (p / planks) * 512
+    const base = 44 + Math.floor(Math.random() * 20)
+    ctx.fillStyle = `rgb(${base + 20},${base + 6},${base - 8})`
+    ctx.fillRect(0, y0, 512, 512 / planks - 2)
+    // grain streaks
+    for (let i = 0; i < 60; i++) {
+      const yy = y0 + Math.random() * (512 / planks)
+      ctx.strokeStyle = `rgba(${20 + Math.random() * 20},${12 + Math.random() * 12},6,0.18)`
+      ctx.lineWidth = 0.8
+      ctx.beginPath()
+      ctx.moveTo(0, yy)
+      for (let x = 0; x <= 512; x += 24) ctx.lineTo(x, yy + Math.sin(x * 0.05 + p) * 2)
+      ctx.stroke()
+    }
+    // plank seam
+    ctx.strokeStyle = 'rgba(10,6,3,0.6)'
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.moveTo(0, y0)
+    ctx.lineTo(512, y0)
+    ctx.stroke()
+  }
+  // scuffs, stains, tool marks
+  for (let i = 0; i < 40; i++) {
+    const x = Math.random() * 512
+    const y = Math.random() * 512
+    const r = 4 + Math.random() * 22
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r)
+    g.addColorStop(0, `rgba(10,6,3,${0.1 + Math.random() * 0.15})`)
+    g.addColorStop(1, 'rgba(10,6,3,0)')
+    ctx.fillStyle = g
+    ctx.beginPath()
+    ctx.arc(x, y, r, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  return finish(c, repeat)
+}
+
+/** Corrugated / joisted ceiling boards, warm dark. */
+export function ceilingTexture(repeat: [number, number] = [8, 6]) {
+  const { c, ctx } = canvas(256)
+  ctx.fillStyle = '#17130e'
+  ctx.fillRect(0, 0, 256, 256)
+  for (let x = 0; x < 256; x += 32) {
+    ctx.fillStyle = 'rgba(0,0,0,0.4)'
+    ctx.fillRect(x, 0, 3, 256)
+    ctx.fillStyle = 'rgba(60,50,38,0.12)'
+    ctx.fillRect(x + 4, 0, 2, 256)
+  }
+  return finish(c, repeat)
+}
+
 /** Pegboard: tan board with a regular grid of dark holes. */
 export function pegboardTexture(repeat: [number, number] = [4, 2]) {
   const { c, ctx } = canvas(512)

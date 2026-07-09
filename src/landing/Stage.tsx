@@ -7,7 +7,7 @@ import So101Arm from '../components/arm/So101Arm'
 import Window from './Window'
 import Outdoors from './Outdoors'
 import Workstation from './Workstation'
-import { concreteTexture, plywoodTexture, pegboardTexture } from './textures'
+import { concreteTexture, plywoodTexture, pegboardTexture, workbenchTexture, ceilingTexture } from './textures'
 
 /**
  * The warm dim home-garage workshop at a rainy dawn. Blockout stage: real
@@ -15,73 +15,190 @@ import { concreteTexture, plywoodTexture, pegboardTexture } from './textures'
  * establishes the room + scale; texture and station dressing come next.
  */
 
-// ---- palette ----------------------------------------------------------------
-const BG = '#0a0806'
-const CONCRETE = '#1d1a15'
-const PLY = '#2c2318' // warm plywood wall
-const BENCH_TOP = '#241a12'
-const METAL = '#2a2723'
-const KEY = '#ffcf96'
-const PRACTICAL = '#ff9a4d'
-const RIM = '#8fb4ff'
+// ---- palette (Big Hero 6 warm garage: warm woods/cream + teal tech accents) --
+const BG = '#150d05' // warm dark
+const CONCRETE = '#3a2c1e' // warm sealed floor
+const PLY = '#7a5a38' // warm wood-panel wall
+const WALL_WARM = '#a07d4f' // warm cream drywall
+const METAL = '#4a4038'
+const KEY = '#ffcf8f' // warm tungsten
+const PRACTICAL = '#ff9a4d' // warm lamp
+const RIM = '#9ec2ff' // cool dawn rim
+const TEAL = '#3fd6c4' // tech-glow accent
 
 const DESK_Y = 0.4
 
-const mBenchTop = <meshStandardMaterial color={BENCH_TOP} metalness={0.15} roughness={0.72} />
 const mMetal = <meshStandardMaterial color={METAL} metalness={0.6} roughness={0.5} />
 
-/** The arm's workbench. */
+const DESK_D = 4.8 // bench depth (extended along the short/z side)
+
+/** The arm's workbench — worn wood top on a steel frame. */
 function Workbench() {
+  const wood = useMemo(() => workbenchTexture([2, 1.4]), [])
   const legXs = [-2.85, 2.85]
-  const legZs = [-1.3, 1.3]
+  const legZs = [-2.05, 2.05]
   return (
     <group>
-      <RoundedBox args={[6.4, 0.16, 3.1]} radius={0.03} smoothness={4} position={[0, DESK_Y - 0.08, 0]} castShadow receiveShadow>
-        {mBenchTop}
+      {/* worn wood top */}
+      <RoundedBox args={[6.4, 0.18, DESK_D]} radius={0.03} smoothness={4} position={[0, DESK_Y - 0.09, 0]} castShadow receiveShadow>
+        <meshStandardMaterial map={wood} color={'#6a4d33'} metalness={0.05} roughness={0.72} />
       </RoundedBox>
-      <mesh position={[0, DESK_Y - 0.2, 0]} castShadow>
-        <boxGeometry args={[6.2, 0.1, 2.9]} />
+      {/* steel apron */}
+      <mesh position={[0, DESK_Y - 0.24, 0]} castShadow>
+        <boxGeometry args={[6.2, 0.12, DESK_D - 0.2]} />
         {mMetal}
       </mesh>
       {legXs.map((x) =>
         legZs.map((z) => (
-          <mesh key={`${x}:${z}`} position={[x, (DESK_Y - 0.25 - 2) / 2 + 0.1, z]} castShadow receiveShadow>
-            <boxGeometry args={[0.14, DESK_Y - 0.25 + 2, 0.14]} />
+          <mesh key={`${x}:${z}`} position={[x, (DESK_Y - 0.3 - 2) / 2 + 0.1, z]} castShadow receiveShadow>
+            <boxGeometry args={[0.15, DESK_Y - 0.3 + 2, 0.15]} />
             {mMetal}
           </mesh>
         )),
       )}
-      <mesh position={[0, -1.15, 0]} receiveShadow castShadow>
-        <boxGeometry args={[5.9, 0.08, 2.7]} />
+      {/* lower shelf */}
+      <mesh position={[0, -1.2, 0]} receiveShadow castShadow>
+        <boxGeometry args={[5.9, 0.08, DESK_D - 0.3]} />
         {mMetal}
       </mesh>
     </group>
   )
 }
 
-/** Concrete floor, a left corner wall, and a ceiling — the room shell. */
+/** Concrete floor, corner walls, and a joisted garage ceiling — the shell. */
 function Shell() {
-  const concrete = useMemo(() => concreteTexture([7, 7]), [])
-  const plywood = useMemo(() => plywoodTexture([2, 2]), [])
+  const concrete = useMemo(() => concreteTexture([9, 9]), [])
+  const plywood = useMemo(() => plywoodTexture([3, 2]), [])
+  const ceil = useMemo(() => ceilingTexture([10, 5]), [])
   return (
     <group>
       {/* concrete floor */}
       <mesh position={[0, -2, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[80, 80]} />
-        <meshStandardMaterial map={concrete} color={CONCRETE} metalness={0.04} roughness={0.95} />
+        <meshStandardMaterial map={concrete} color={CONCRETE} metalness={0.04} roughness={0.96} />
       </mesh>
-      {/* left wall (plywood) forming a corner with the window wall — kept
-          interior-side of the back wall so it never occludes the outdoors */}
+      {/* left wall (plywood) — interior-side of the back wall */}
       <mesh position={[-8, 2.5, 3.5]} rotation={[0, Math.PI / 2, 0]} receiveShadow>
         <planeGeometry args={[15, 12]} />
         <meshStandardMaterial map={plywood} color={PLY} metalness={0.05} roughness={0.9} />
       </mesh>
-      {/* ceiling — interior only, stops at the back wall so it doesn't occlude
-          the dawn sky seen through the window */}
+      {/* ceiling boards (warm) */}
       <mesh position={[0, 7, 4]} rotation={[Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[40, 15]} />
-        <meshStandardMaterial color={'#100d0a'} metalness={0.05} roughness={0.95} />
+        <planeGeometry args={[40, 16]} />
+        <meshStandardMaterial map={ceil} color={'#3a2a18'} metalness={0.04} roughness={0.92} />
       </mesh>
+      {/* exposed warm-wood joists running across the ceiling */}
+      {[-6, -3, 0, 3, 6, 9].map((z) => (
+        <mesh key={z} position={[0, 6.75, z]} castShadow>
+          <boxGeometry args={[26, 0.5, 0.28]} />
+          <meshStandardMaterial color={'#4a3420'} metalness={0.04} roughness={0.85} />
+        </mesh>
+      ))}
+      {/* a couple of conduit/pipe runs for detail */}
+      <mesh position={[-3, 6.5, 2]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.08, 0.08, 24, 8]} />
+        <meshStandardMaterial color={'#3a3630'} metalness={0.4} roughness={0.6} />
+      </mesh>
+    </group>
+  )
+}
+
+/** Floor-standing PC tower beside the bench, cabled up to the desk. */
+function PcTower({ position }: { position: [number, number, number] }) {
+  return (
+    <group position={position}>
+      <RoundedBox args={[0.7, 1.7, 1.5]} radius={0.03} smoothness={3} position={[0, 0.85, 0]} castShadow receiveShadow>
+        <meshStandardMaterial color={'#1a1c20'} metalness={0.4} roughness={0.5} />
+      </RoundedBox>
+      {/* glass side panel with a faint interior glow */}
+      <mesh position={[0.36, 0.85, 0]}>
+        <planeGeometry args={[1.3, 1.5]} />
+        <meshStandardMaterial color={'#0a1016'} emissive={'#123'} emissiveIntensity={0.5} metalness={0.1} roughness={0.1} transparent opacity={0.55} />
+      </mesh>
+      {/* front intake + power LED */}
+      <mesh position={[0, 1.55, 0.76]}>
+        <boxGeometry args={[0.5, 0.03, 0.02]} />
+        <meshStandardMaterial color={'#6ad0ff'} emissive={'#2a86c9'} emissiveIntensity={2.5} toneMapped={false} />
+      </mesh>
+      {/* cable bundle rising toward the desk */}
+      <mesh position={[0, 1.75, -0.3]} rotation={[0.5, 0, 0]}>
+        <cylinderGeometry args={[0.05, 0.05, 0.9, 6]} />
+        <meshStandardMaterial color={'#0d0d0f'} roughness={0.9} />
+      </mesh>
+    </group>
+  )
+}
+
+/** A steel shelving unit stacked with parts boxes, totes and cans. */
+function Shelving({ position, rotation = [0, 0, 0] }: { position: [number, number, number]; rotation?: [number, number, number] }) {
+  const shelfYs = [0, 1.3, 2.6, 3.9]
+  const box = (x: number, y: number, z: number, w: number, h: number, d: number, c: string) => (
+    <mesh position={[x, y, z]} castShadow receiveShadow>
+      <boxGeometry args={[w, h, d]} />
+      <meshStandardMaterial color={c} metalness={0.1} roughness={0.7} />
+    </mesh>
+  )
+  return (
+    <group position={position} rotation={rotation as unknown as THREE.Euler}>
+      {/* uprights */}
+      {[[-1.4, -0.7], [1.4, -0.7], [-1.4, 0.7], [1.4, 0.7]].map(([x, z], i) => (
+        <mesh key={i} position={[x, 2, z]} castShadow>
+          <boxGeometry args={[0.1, 4.2, 0.1]} />
+          <meshStandardMaterial color={'#2b2620'} metalness={0.4} roughness={0.6} />
+        </mesh>
+      ))}
+      {/* shelves + contents */}
+      {shelfYs.map((y, si) => (
+        <group key={y}>
+          <mesh position={[0, y, 0]} castShadow receiveShadow>
+            <boxGeometry args={[3.0, 0.08, 1.5]} />
+            <meshStandardMaterial color={'#332c22'} metalness={0.2} roughness={0.7} />
+          </mesh>
+          {si === 0 && (<>{box(-0.8, y + 0.35, 0, 0.9, 0.6, 1.1, '#5a4636')}{box(0.5, y + 0.3, 0.1, 1.0, 0.5, 1.0, '#3a4d63')}</>)}
+          {si === 1 && (<>{box(-0.6, y + 0.3, 0, 1.2, 0.5, 1.1, '#4a5340')}{box(0.8, y + 0.4, -0.1, 0.7, 0.7, 0.8, '#63503a')}</>)}
+          {si === 2 && (<>{box(-0.9, y + 0.25, 0.1, 0.7, 0.42, 0.9, '#3e3a52')}{box(0.2, y + 0.3, 0, 1.1, 0.5, 1.0, '#5a4636')}
+            <mesh position={[1.1, y + 0.28, 0.2]} castShadow><cylinderGeometry args={[0.22, 0.22, 0.55, 16]} /><meshStandardMaterial color={'#7a6a4a'} metalness={0.4} roughness={0.6} /></mesh></>)}
+          {si === 3 && (<>{box(-0.5, y + 0.3, 0, 1.3, 0.5, 1.1, '#332c3e')}
+            <mesh position={[0.9, y + 0.3, 0]} castShadow><cylinderGeometry args={[0.2, 0.2, 0.6, 14]} /><meshStandardMaterial color={'#4a4d55'} metalness={0.6} roughness={0.4} /></mesh></>)}
+        </group>
+      ))}
+    </group>
+  )
+}
+
+/** A red rolling tool chest — a classic garage anchor. */
+function ToolChest({ position }: { position: [number, number, number] }) {
+  const RED = '#7a1f1f'
+  return (
+    <group position={position}>
+      {/* cabinet body */}
+      <RoundedBox args={[1.8, 2.0, 1.0]} radius={0.03} smoothness={3} position={[0, 1.2, 0]} castShadow receiveShadow>
+        <meshStandardMaterial color={RED} metalness={0.35} roughness={0.5} />
+      </RoundedBox>
+      {/* top chest */}
+      <RoundedBox args={[1.85, 0.5, 1.05]} radius={0.03} smoothness={3} position={[0, 2.45, 0]} castShadow>
+        <meshStandardMaterial color={RED} metalness={0.35} roughness={0.5} />
+      </RoundedBox>
+      {/* drawers with handles */}
+      {[0.45, 0.95, 1.45, 1.9].map((y, i) => (
+        <group key={y}>
+          <mesh position={[0, y, 0.51]} castShadow>
+            <boxGeometry args={[1.66, i === 3 ? 0.42 : 0.4, 0.03]} />
+            <meshStandardMaterial color={'#8a2a2a'} metalness={0.3} roughness={0.55} />
+          </mesh>
+          <mesh position={[0, y, 0.55]} castShadow>
+            <boxGeometry args={[1.2, 0.05, 0.04]} />
+            <meshStandardMaterial color={'#c8ccd2'} metalness={0.8} roughness={0.3} />
+          </mesh>
+        </group>
+      ))}
+      {/* casters */}
+      {[[-0.7, -0.35], [0.7, -0.35], [-0.7, 0.35], [0.7, 0.35]].map(([x, z], i) => (
+        <mesh key={i} position={[x, 0.12, z]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+          <cylinderGeometry args={[0.12, 0.12, 0.1, 12]} />
+          <meshStandardMaterial color={'#0d0d0f'} roughness={0.8} />
+        </mesh>
+      ))}
     </group>
   )
 }
@@ -281,25 +398,69 @@ function Lighting() {
   const key = useRef<THREE.DirectionalLight>(null)
   return (
     <>
-      <ambientLight intensity={0.26} color={KEY} />
-      {/* soft warm fill so the room's surfaces read out of pure black */}
-      <hemisphereLight args={['#4a3f30', '#0f0b08', 0.5]} />
-      {/* warm key roughly from the shop light, casts the hero shadow */}
+      {/* warm, lifted ambient — cozy garage, not a void */}
+      <ambientLight intensity={0.42} color={'#ffe0b0'} />
+      <hemisphereLight args={['#6a5238', '#1a1109', 0.8]} />
+      {/* warm key from the shop light, casts the hero shadow */}
       <directionalLight
         ref={key}
         position={[-2.5, 6.5, 3.0]}
-        intensity={1.5}
+        intensity={1.7}
         color={KEY}
         castShadow
         shadow-mapSize={[2048, 2048]}
         shadow-bias={-0.0004}
       >
-        <orthographicCamera attach="shadow-camera" args={[-10, 10, 10, -10, 0.1, 30]} />
+        <orthographicCamera attach="shadow-camera" args={[-11, 11, 11, -11, 0.1, 32]} />
       </directionalLight>
-      {/* cool moonlight/dawn rim from the window side (softened so it doesn't
-          cast a greenish sheen across the far floor) */}
-      <directionalLight position={[-6, 4, -5]} intensity={0.5} color={RIM} />
+      {/* cool dawn rim from the window side */}
+      <directionalLight position={[-6, 4, -5]} intensity={0.45} color={RIM} />
+      {/* warm bounce/fill pools for a cozy wrap */}
+      <pointLight position={[-3, 1.5, 2]} intensity={2.2} distance={9} decay={2} color={'#ff9d54'} />
+      <pointLight position={[4, 1.8, 1.5]} intensity={1.6} distance={8} decay={2} color={'#ffb060'} />
     </>
+  )
+}
+
+/** Warm string lights draped along the wall — a cozy Big Hero 6 staple. */
+function StringLights() {
+  const bulbs = useMemo(() => {
+    const arr: [number, number, number][] = []
+    const n = 14
+    for (let i = 0; i <= n; i++) {
+      const t = i / n
+      const x = -6.5 + t * 12.5
+      const sag = Math.sin(t * Math.PI) * 0.5
+      arr.push([x, 5.1 - sag, -3.1])
+    }
+    return arr
+  }, [])
+  return (
+    <group>
+      {/* the wire */}
+      {bulbs.slice(0, -1).map((b, i) => {
+        const n = bulbs[i + 1]
+        const mid: [number, number, number] = [(b[0] + n[0]) / 2, (b[1] + n[1]) / 2, (b[2] + n[2]) / 2]
+        const len = Math.hypot(n[0] - b[0], n[1] - b[1])
+        const ang = Math.atan2(n[1] - b[1], n[0] - b[0])
+        return (
+          <mesh key={`w${i}`} position={mid} rotation={[0, 0, ang]}>
+            <cylinderGeometry args={[0.012, 0.012, len, 4]} />
+            <meshStandardMaterial color={'#1a1109'} />
+          </mesh>
+        )
+      })}
+      {/* warm bulbs (emissive) */}
+      {bulbs.map((b, i) => (
+        <mesh key={`b${i}`} position={[b[0], b[1] - 0.12, b[2]]}>
+          <sphereGeometry args={[0.075, 10, 8]} />
+          <meshStandardMaterial color={'#ffe6b0'} emissive={'#ffb64a'} emissiveIntensity={3.2} toneMapped={false} />
+        </mesh>
+      ))}
+      {/* a couple of real lights so the string actually warms the wall */}
+      <pointLight position={[-3, 4.7, -2.8]} intensity={1.4} distance={7} decay={2} color={'#ffb64a'} />
+      <pointLight position={[3, 4.7, -2.8]} intensity={1.4} distance={7} decay={2} color={'#ffb64a'} />
+    </group>
   )
 }
 
@@ -308,15 +469,16 @@ export default function Stage() {
     <Canvas
       shadows
       dpr={[1, 2]}
-      gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.1 }}
-      camera={{ position: [10.5, 4.8, 18.5], fov: 40, near: 0.1, far: 120 }}
+      gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.28 }}
+      camera={{ position: [9.2, 4.4, 16.2], fov: 39, near: 0.1, far: 120 }}
       onCreated={({ scene, camera }) => {
         scene.background = new THREE.Color(BG)
-        scene.fog = new THREE.Fog(BG, 22, 46)
-        camera.lookAt(-0.4, 1.4, -1.2)
+        scene.fog = new THREE.Fog(BG, 22, 48)
+        camera.lookAt(-0.3, 1.35, -1.1)
       }}
     >
       <Lighting />
+      <StringLights />
 
       <Environment resolution={256}>
         <Lightformer intensity={1.0} color={KEY} position={[-3, 4, 3]} scale={[6, 6, 1]} />
@@ -330,8 +492,14 @@ export default function Stage() {
       <WallDressing />
       <ShopLight />
       <Workbench />
-      <Workstation y={DESK_Y} />
+      <group position={[0, DESK_Y, 0]}>
+        <Workstation />
+      </group>
       <So101Arm />
+
+      {/* background / floor dressing */}
+      <PcTower position={[4.3, -2, 1.2]} />
+      <ToolChest position={[-4.7, -2, 2.4]} />
 
       <EffectComposer>
         <Bloom luminanceThreshold={0.6} luminanceSmoothing={0.2} intensity={0.7} mipmapBlur />
