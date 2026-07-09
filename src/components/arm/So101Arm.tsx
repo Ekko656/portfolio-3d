@@ -4,113 +4,130 @@ import * as THREE from 'three'
 import URDFLoader from 'urdf-loader'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 import { armState } from '../../landing/armState'
+import { weather } from '../../landing/Outdoors'
 import { ignition, PHASE_LEN, CRADLE_POS, SOCKET_POS, type IgnitionPhase } from '../../landing/ignition'
 
 type Joints = Record<string, { setJointValue: (v: number) => void }>
-
-/**
- * Choreographed idle: the arm eases between hand-tuned poses, holding briefly
- * at each — every joint participates and no pose can dip the gripper into the
- * floor. Values: [Rotation, Pitch, Elbow, Wrist_Pitch, Wrist_Roll, Jaw].
- */
 type Pose = [number, number, number, number, number, number]
-// VERIFIED joint map (probed live with screenshots):
-//   Elbow: -1.7 = fully straight, 0 = fully folded → obtuse V needs E ≤ -0.7
-//   Pitch: 0 = upper arm vertical, NEGATIVE leans forward, positive back
-// Every pose uses real range of motion: near-horizontal shoulders, vertical
-// forearms, full extensions — true open-V silhouettes, never the folded droop.
-const POSES: { v: Pose; move: number; hold: number }[] = [
-  { v: [1.2, -1.65, -0.95, -0.2, 0.4, 0.9], move: 2.8, hold: 0.8 }, // crisp V, right profile
-  { v: [0.0, -0.1, -1.65, 0.1, 0.0, 0.4], move: 2.6, hold: 0.6 }, // full vertical stretch
-  { v: [-0.9, 0.85, -1.2, -0.4, -0.9, 1.3], move: 3.0, hold: 0.7 }, // lean back, extended gaze
-  { v: [-0.5, -1.3, -1.5, 0.3, 0.6, 0.2], move: 2.6, hold: 0.5 }, // long forward lunge
-  { v: [0.7, -1.1, -0.7, -0.5, 1.2, 1.6], move: 2.8, hold: 0.6 }, // high V wave, jaw open
-  { v: [0.2, 0.35, -0.35, -0.6, -0.5, 0.7], move: 2.3, hold: 0.8 }, // compact think (contrast)
-]
+
 const JOINT_NAMES = ['Rotation', 'Pitch', 'Elbow', 'Wrist_Pitch', 'Wrist_Roll', 'Jaw'] as const
 
-// Upright-safe pose the guard blends toward when a target would dip too low
-// (same verified map: mostly-extended, leaning slightly back).
+// ---------------------------------------------------------------------------
+// Character poses (verified live via window.__pause + setJointValue). Joint map:
+//   Rotation: + turns toward the viewer/right, − toward the window/left
+//   Pitch:    0 upper-arm vertical, − leans it forward
+//   Elbow:    −1.7 straight, 0 fully folded
+//   Wrist_Pitch: − tilts the "head" (gripper) up, + tilts it down
+//   Wrist_Roll:  cocks the head sideways (quizzical)
+//   Jaw:      gripper open amount
+// The arm is treated like a Luxo-lamp creature: gaze + posture carry emotion.
+// ---------------------------------------------------------------------------
+const REST: Pose = [0.1, -0.6, -0.5, -0.15, 0, 0.14] // settled, head near-level
+const VIEWER: Pose = [0.5, -1.12, -0.55, -0.72, 0, 0.3] // perks up, looks at you
+const VIEWER_NOD: Pose = [0.5, -1.12, -0.55, -0.5, 0, 0.28] // small acknowledging dip
+const WINDOW: Pose = [-0.95, -0.9, -0.7, -1.12, 0, 0.2] // gazes out at the rain
+const LOOK_L: Pose = [-0.5, -1.0, -0.62, -0.8, 0.35, 0.18]
+const LOOK_R: Pose = [0.95, -1.0, -0.62, -0.75, -0.35, 0.22]
+const PONDER: Pose = [0.25, -0.85, -0.5, -0.35, 0.7, 0.12] // head cocked, thinking
+const STARTLE: Pose = [-0.05, -0.15, -1.05, -1.4, 0, 1.0] // flinch up + back, jaw open
+// upright-safe pose the floor guard blends toward
 const SAFE: Pose = [0, 0.2, -1.3, -0.1, 0, 0.7]
 
-// ---- Ignition choreography (verified map) ----
-const R_CORE = Math.atan2(CRADLE_POS[0], CRADLE_POS[2]) // yaw toward the cradle
-const R_SOCK = Math.atan2(SOCKET_POS[0], SOCKET_POS[2]) // yaw toward the socket
-const IGN_POSE: Record<Exclude<IgnitionPhase, 'idle'>, Pose> = {
-  reach: [R_CORE, -1.25, -1.05, 0.65, 0, 1.6], // lean out over the cradle, jaw wide
-  grab: [R_CORE, -1.28, -1.02, 0.68, 0, 0.12], // close on the core
-  lift: [(R_CORE + R_SOCK) / 2, -0.4, -1.55, -0.25, 0, 0.12], // hoist it high
-  slot: [R_SOCK, -1.18, -0.98, 0.72, 0, 0.12], // lower into the socket
-  release: [R_SOCK, -1.18, -0.98, 0.72, 0, 1.3], // open, let it seat
-  surge: [0.15, 0.3, -1.4, -0.45, 0, 0.9], // step back and watch it light
-}
-const IGN_ORDER: Exclude<IgnitionPhase, 'idle'>[] = [
-  'reach',
-  'grab',
-  'lift',
-  'slot',
-  'release',
-  'surge',
+type KF = { v: Pose; move: number; hold: number }
+type Behavior = { name: string; weight: number; frames: KF[] }
+
+const BEHAVIORS: Behavior[] = [
+  { name: 'rest', weight: 2, frames: [{ v: REST, move: 2.2, hold: 3.6 }] },
+  // watching the rain is the emotional anchor — lingered on
+  {
+    name: 'watchRain',
+    weight: 3,
+    frames: [
+      { v: WINDOW, move: 2.8, hold: 4.5 },
+      { v: [-0.8, -0.9, -0.7, -1.05, 0.25, 0.2], move: 1.4, hold: 2.6 }, // slow head tilt
+    ],
+  },
+  {
+    name: 'lookAtYou',
+    weight: 2,
+    frames: [
+      { v: VIEWER, move: 2.0, hold: 2.4 },
+      { v: VIEWER_NOD, move: 0.7, hold: 1.4 },
+    ],
+  },
+  {
+    name: 'scan',
+    weight: 2,
+    frames: [
+      { v: LOOK_L, move: 2.2, hold: 1.3 },
+      { v: LOOK_R, move: 2.8, hold: 1.3 },
+      { v: REST, move: 2.0, hold: 0.8 },
+    ],
+  },
+  { name: 'ponder', weight: 1.5, frames: [{ v: PONDER, move: 1.8, hold: 3.2 }] },
 ]
+
+// gentle "breathing" overlay so holds never look frozen (per-joint amp + rate)
+const BREATHE_AMP: Pose = [0.014, 0.02, 0.014, 0.03, 0.018, 0]
+const BREATHE_RATE: Pose = [0.7, 0.9, 0.8, 1.15, 0.6, 1]
 
 const smootherstep = (x: number) => {
   const t = Math.min(Math.max(x, 0), 1)
   return t * t * t * (t * (t * 6 - 15) + 10)
 }
+const lerpPose = (a: Pose, b: Pose, k: number): Pose =>
+  a.map((v, i) => v + (b[i] - v) * k) as Pose
 
-/**
- * The real open-source SO-ARM101 (TheRobotStudio / MuammerBay ROS2 URDF),
- * loaded from URDF + per-link STL meshes via urdf-loader and re-shaded in PBR
- * metal. Articulated by its named revolute joints (Rotation, Pitch, Elbow,
- * Wrist_Pitch, Wrist_Roll, Jaw).
- */
+// ---- Ignition choreography (verified map, unchanged scaffold) ----
+const R_CORE = Math.atan2(CRADLE_POS[0], CRADLE_POS[2])
+const R_SOCK = Math.atan2(SOCKET_POS[0], SOCKET_POS[2])
+const IGN_POSE: Record<Exclude<IgnitionPhase, 'idle'>, Pose> = {
+  reach: [R_CORE, -1.25, -1.05, 0.65, 0, 1.6],
+  grab: [R_CORE, -1.28, -1.02, 0.68, 0, 0.12],
+  lift: [(R_CORE + R_SOCK) / 2, -0.4, -1.55, -0.25, 0, 0.12],
+  slot: [R_SOCK, -1.18, -0.98, 0.72, 0, 0.12],
+  release: [R_SOCK, -1.18, -0.98, 0.72, 0, 1.3],
+  surge: [0.15, 0.3, -1.4, -0.45, 0, 0.9],
+}
+const IGN_ORDER: Exclude<IgnitionPhase, 'idle'>[] = ['reach', 'grab', 'lift', 'slot', 'release', 'surge']
+
 export default function So101Arm() {
   const [robot, setRobot] = useState<THREE.Object3D | null>(null)
   const joints = useRef<Joints | null>(null)
-  const seqRef = useRef({ idx: 0, start: 0 })
   const robotRef = useRef<THREE.Object3D | null>(null)
   const tipLinks = useRef<THREE.Object3D[]>([])
   const probe = useRef(new THREE.Vector3())
-  const guardS = useRef(1) // smoothed floor-guard blend (1 = untouched pose)
-  const lastApplied = useRef<number[]>([...SAFE])
+  const guardS = useRef(1)
+  const lastApplied = useRef<Pose>([...SAFE] as Pose)
+
+  // behavior scheduler state
+  const seg = useRef<{ from: Pose; to: Pose; move: number; hold: number; start: number } | null>(null)
+  const queue = useRef<KF[]>([])
+  const lastBehavior = useRef('')
+  const prevFlash = useRef(0)
+  const startleUntil = useRef(0)
+
+  // ignition state
   const lastPhase = useRef<IgnitionPhase>('idle')
-  const phaseFrom = useRef<number[]>([...SAFE])
-  const resumeFrom = useRef<number[] | null>(null)
+  const phaseFrom = useRef<Pose>([...SAFE] as Pose)
+  const resumeFrom = useRef<Pose | null>(null)
   const resumeStart = useRef(0)
 
   useEffect(() => {
     const manager = new THREE.LoadingManager()
     const loader = new URDFLoader(manager)
-    ;(loader as unknown as { packages: Record<string, string> }).packages = {
-      so_arm_description: '/so101',
-    }
+    ;(loader as unknown as { packages: Record<string, string> }).packages = { so_arm_description: '/so101' }
 
-    // Re-skin the URDF's baked colours into the theme: light brushed steel for
-    // the printed body, dark charcoal metal for the servos.
-    const bodyMat = new THREE.MeshStandardMaterial({
-      color: '#dbe2ee',
-      metalness: 0.5,
-      roughness: 0.5,
-      envMapIntensity: 1.0,
-    })
-    const servoMat = new THREE.MeshStandardMaterial({
-      color: '#262b34',
-      metalness: 0.7,
-      roughness: 0.42,
-      envMapIntensity: 0.9,
-    })
+    const bodyMat = new THREE.MeshStandardMaterial({ color: '#dbe2ee', metalness: 0.5, roughness: 0.5, envMapIntensity: 1.0 })
+    const servoMat = new THREE.MeshStandardMaterial({ color: '#262b34', metalness: 0.7, roughness: 0.42, envMapIntensity: 0.9 })
 
     ;(loader as unknown as {
-      loadMeshCb: (
-        path: string,
-        m: THREE.LoadingManager,
-        done: (o: THREE.Object3D) => void,
-      ) => void
+      loadMeshCb: (path: string, m: THREE.LoadingManager, done: (o: THREE.Object3D) => void) => void
     }).loadMeshCb = (path, m, done) => {
       new STLLoader(m).load(path, (geom) => {
         geom.computeVertexNormals()
         const mesh = new THREE.Mesh(geom)
-        mesh.userData.src = path // tag with source file for selective hiding
+        mesh.userData.src = path
         done(mesh)
       })
     }
@@ -120,21 +137,13 @@ export default function So101Arm() {
     loader.load('/so101/so101.urdf', (r: THREE.Object3D) => {
       built = r
     })
-    // wait until every STL mesh has finished, then re-skin + mount
     manager.onLoad = () => {
       if (!alive || !built) return
       built.traverse((o) => {
         const mesh = o as THREE.Mesh & { material?: THREE.Material & { name?: string } }
         if (mesh.isMesh) {
-          // hide the boxy electronics enclosure entirely (plate, driver case,
-          // outer shell) — the arm mounts straight onto the dais via its
-          // rotation base, no crate-like case in sight
           const src = String(mesh.userData.src)
-          if (
-            src.includes('waveshare_mounting_plate') ||
-            src.includes('base_motor_holder') ||
-            src.includes('base_so101_v2')
-          ) {
+          if (src.includes('waveshare_mounting_plate') || src.includes('base_motor_holder') || src.includes('base_so101_v2')) {
             mesh.visible = false
             return
           }
@@ -144,15 +153,9 @@ export default function So101Arm() {
         }
       })
       joints.current = (built as unknown as { joints: Joints }).joints
-      // grab the end-of-chain links so the frame loop can measure real
-      // world-space clearance (exact FK, no approximations)
       const lk = (built as unknown as { links?: Record<string, THREE.Object3D> }).links
-      tipLinks.current = ['wrist', 'gripper', 'jaw']
-        .map((n) => lk?.[n])
-        .filter((o): o is THREE.Object3D => !!o)
-
+      tipLinks.current = ['wrist', 'gripper', 'jaw'].map((n) => lk?.[n]).filter((o): o is THREE.Object3D => !!o)
       robotRef.current = built
-      // debug handle for scene inspection (harmless in prod)
       ;(window as unknown as Record<string, unknown>).__robot = built
       setRobot(built)
     }
@@ -161,73 +164,104 @@ export default function So101Arm() {
     }
   }, [])
 
+  // ---- behavior scheduler helpers ----
+  const pickBehavior = (): Behavior => {
+    const pool = BEHAVIORS.filter((b) => b.name !== lastBehavior.current)
+    const total = pool.reduce((s, b) => s + b.weight, 0)
+    let r = Math.random() * total
+    let chosen = pool[0]
+    for (const b of pool) {
+      r -= b.weight
+      if (r <= 0) {
+        chosen = b
+        break
+      }
+    }
+    lastBehavior.current = chosen.name
+    return chosen
+  }
+
+  const nextSeg = (from: Pose, t: number) => {
+    if (queue.current.length === 0) queue.current.push(...pickBehavior().frames)
+    const kf = queue.current.shift()!
+    seg.current = { from, to: kf.v, move: kf.move, hold: kf.hold, start: t }
+  }
+
   useFrame(({ clock }, delta) => {
     const j = joints.current
     if (!j) return
-    // debug: freeze the idle so joints can be set externally
     if ((window as unknown as Record<string, unknown>).__pause) return
     const t = clock.elapsedTime
-    const seq = seqRef.current
-    const cur = POSES[seq.idx].v
-    const nxt = POSES[(seq.idx + 1) % POSES.length].v
-    const { move, hold } = POSES[(seq.idx + 1) % POSES.length]
-    const elapsed = t - seq.start
-    const k = smootherstep(elapsed / move)
 
-    // publish the gripper tip world position for the ignition core to follow
+    // publish gripper tip world position for the ignition core to follow
     if (tipLinks.current[1]) {
       tipLinks.current[1].getWorldPosition(probe.current)
       ignition.tip.copy(probe.current)
     }
 
-    let blended: number[]
+    let blended: Pose
+
     if (ignition.phase !== 'idle') {
-      // ---- scripted ignition choreography overrides the idle ----
+      // ---- scripted ignition choreography overrides idle behaviors ----
       const phase = ignition.phase as Exclude<IgnitionPhase, 'idle'>
       if (lastPhase.current !== phase) {
         lastPhase.current = phase
         ignition.phaseStart = t
-        phaseFrom.current = [...lastApplied.current]
+        phaseFrom.current = [...lastApplied.current] as Pose
       }
       const prog = (t - ignition.phaseStart) / PHASE_LEN[phase]
       const e = smootherstep(prog)
-      const target = IGN_POSE[phase]
-      blended = JOINT_NAMES.map((_, i) => phaseFrom.current[i] + (target[i] - phaseFrom.current[i]) * e)
+      blended = lerpPose(phaseFrom.current, IGN_POSE[phase], e)
       if (prog >= 1) {
         const next = IGN_ORDER[IGN_ORDER.indexOf(phase) + 1]
-        if (next) {
-          ignition.phase = next
-        } else {
+        if (next) ignition.phase = next
+        else {
           ignition.phase = 'idle'
           lastPhase.current = 'idle'
-          resumeFrom.current = [...lastApplied.current]
+          resumeFrom.current = [...lastApplied.current] as Pose
           resumeStart.current = t
-          seq.idx = 0
-          seq.start = t
+          seg.current = null
+          queue.current = []
         }
       }
     } else {
-      // pose-sequencer idle: ease between keyframed poses, all joints live
-      blended = JOINT_NAMES.map((_, i) => {
-        // tiny breathing dither on top so holds never look frozen
-        const dither = Math.sin(t * (0.9 + i * 0.17) + i * 1.7) * 0.025
-        return cur[i] + (nxt[i] - cur[i]) * k + dither
-      })
-      // smooth hand-back from wherever the choreography ended
+      // ---- alive behavior scheduler ----
+      // lightning startle: on the rising edge of a flash, flinch, then recover
+      const flash = weather.flash
+      if (flash > 0.45 && prevFlash.current <= 0.45 && t > startleUntil.current) {
+        queue.current = [{ v: REST, move: 1.3, hold: 1.6 }]
+        seg.current = { from: [...lastApplied.current] as Pose, to: STARTLE, move: 0.12, hold: 0.35, start: t }
+        startleUntil.current = t + 2.2 // debounce repeated strikes
+      }
+      prevFlash.current = flash
+
+      if (!seg.current) nextSeg(REST, t)
+      let s = seg.current!
+      const e = t - s.start
+      if (e <= s.move) {
+        blended = lerpPose(s.from, s.to, smootherstep(e / s.move))
+      } else if (e <= s.move + s.hold) {
+        blended = [...s.to] as Pose
+      } else {
+        nextSeg(s.to, t)
+        s = seg.current!
+        blended = [...s.from] as Pose
+      }
+
+      // breathing overlay so it always feels alive
+      blended = blended.map((v, i) => v + BREATHE_AMP[i] * Math.sin(t * BREATHE_RATE[i] + i * 1.7)) as Pose
+
+      // smooth hand-back after an ignition run ends
       if (resumeFrom.current) {
         const rf = smootherstep((t - resumeStart.current) / 1.4)
-        blended = blended.map((v, i) => resumeFrom.current![i] + (v - resumeFrom.current![i]) * rf)
+        blended = lerpPose(resumeFrom.current, blended, rf)
         if (rf >= 1) resumeFrom.current = null
       }
     }
 
-    const apply = (v: number[]) =>
-      JOINT_NAMES.forEach((name, i) => j[name]?.setJointValue(v[i]))
+    const apply = (v: Pose) => JOINT_NAMES.forEach((name, i) => j[name]?.setJointValue(v[i]))
 
-    // Measured floor guard: read the REAL world height of the wrist/gripper/
-    // jaw links (exact FK from the loaded URDF). If the pose or a transition
-    // would dip below clearance, bisect Pitch/Elbow/Wrist toward the SAFE
-    // upright pose until it clears — clipping is impossible by construction.
+    // measured floor guard (exact FK) — bisect toward SAFE on Pitch/Elbow/Wrist
     const CLEARANCE = 0.8
     const minTipY = () => {
       robotRef.current!.updateMatrixWorld(true)
@@ -238,14 +272,12 @@ export default function So101Arm() {
       }
       return m
     }
-
-    const mix = (s: number) => {
-      const out = [...blended]
-      for (const idx of [1, 2, 3]) out[idx] = SAFE[idx] + (blended[idx] - SAFE[idx]) * s
+    const mix = (sc: number): Pose => {
+      const out = [...blended] as Pose
+      for (const idx of [1, 2, 3]) out[idx] = SAFE[idx] + (blended[idx] - SAFE[idx]) * sc
       return out
     }
 
-    // Find how much of the pose is floor-safe (bisection on measured FK)…
     apply(blended)
     let targetS = 1
     if (robotRef.current && tipLinks.current.length && minTipY() < CLEARANCE) {
@@ -259,8 +291,6 @@ export default function So101Arm() {
       }
       targetS = lo
     }
-    // …then EASE toward that blend instead of snapping, so the arm glides
-    // along the clearance boundary rather than jittering against it.
     guardS.current += (targetS - guardS.current) * (1 - Math.exp(-5 * delta))
     const final = mix(Math.min(guardS.current, targetS + 0.02))
     apply(final)
@@ -269,24 +299,9 @@ export default function So101Arm() {
     JOINT_NAMES.forEach((name, i) => {
       armState[name] = final[i] as never
     })
-
-    if (ignition.phase === 'idle' && elapsed > move + hold) {
-      seq.idx = (seq.idx + 1) % POSES.length
-      seq.start = t
-    }
     armState.t = t
-    void delta
   })
 
   if (!robot) return null
-  // URDF is Z-up; rotate into the scene's Y-up and scale to size. The fixed
-  // offset centres the measured footprint of the base case on the dais.
-  return (
-    <primitive
-      object={robot}
-      position={[-0.044, 0, -0.255]}
-      rotation={[-Math.PI / 2, 0, 0]}
-      scale={8}
-    />
-  )
+  return <primitive object={robot} position={[-0.044, 0, -0.255]} rotation={[-Math.PI / 2, 0, 0]} scale={8} />
 }
