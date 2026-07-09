@@ -7,7 +7,6 @@ import So101Arm from '../components/arm/So101Arm'
 import Window from './Window'
 import Outdoors from './Outdoors'
 import Workstation from './Workstation'
-import Printer3D from './Printer3D'
 import { concreteTexture, plywoodTexture, pegboardTexture, workbenchTexture, ceilingTexture } from './textures'
 
 /**
@@ -30,37 +29,91 @@ const DESK_Y = 0.4
 
 const mMetal = <meshStandardMaterial color={METAL} metalness={0.6} roughness={0.5} />
 
-const DESK_D = 4.8 // bench depth (extended along the short/z side)
+const DESK_W = 9.0 // bench width
+const DESK_D = 3.4 // bench depth (a real bench, pushed against the wall)
+const BENCH_Z = -2.0 // bench cluster offset so its back edge sits near the wall (z≈-3.7)
 
-/** The arm's workbench — worn wood top on a steel frame. */
+const mSteel = <meshStandardMaterial color={'#26282c'} metalness={0.7} roughness={0.42} />
+const mSteelLt = <meshStandardMaterial color={'#3a3d43'} metalness={0.75} roughness={0.38} />
+
+/** A heavy industrial robotics workbench — steel frame, worn dark wood top with
+ *  a steel edge, a drawer bank, a lower shelf, and a bench vise. Sits against
+ *  the wall (its back edge is at z = DESK_D/2). */
 function Workbench() {
-  const wood = useMemo(() => workbenchTexture([2, 1.4]), [])
-  const legXs = [-2.85, 2.85]
-  const legZs = [-2.05, 2.05]
+  const wood = useMemo(() => workbenchTexture([3, 1.2]), [])
+  const legXs = [-DESK_W / 2 + 0.35, DESK_W / 2 - 0.35]
+  const legZs = [-DESK_D / 2 + 0.35, DESK_D / 2 - 0.35]
+  const legTop = DESK_Y - 0.24
+  const legH = legTop + 2
   return (
     <group>
-      {/* worn butcher-block wood top */}
-      <RoundedBox args={[6.4, 0.18, DESK_D]} radius={0.03} smoothness={4} position={[0, DESK_Y - 0.09, 0]} castShadow receiveShadow>
-        <meshStandardMaterial map={wood} color={'#ffffff'} metalness={0.03} roughness={0.68} />
+      {/* thick worn dark-wood top */}
+      <RoundedBox args={[DESK_W, 0.16, DESK_D]} radius={0.02} smoothness={4} position={[0, DESK_Y - 0.08, 0]} castShadow receiveShadow>
+        <meshStandardMaterial map={wood} color={'#4e3720'} metalness={0.05} roughness={0.75} />
       </RoundedBox>
-      {/* steel apron */}
-      <mesh position={[0, DESK_Y - 0.24, 0]} castShadow>
-        <boxGeometry args={[6.2, 0.12, DESK_D - 0.2]} />
-        {mMetal}
+      {/* steel edge banding around the top */}
+      <mesh position={[0, DESK_Y - 0.08, DESK_D / 2]} castShadow>
+        <boxGeometry args={[DESK_W, 0.2, 0.05]} />
+        {mSteel}
       </mesh>
+      <mesh position={[0, DESK_Y - 0.08, -DESK_D / 2]} castShadow>
+        <boxGeometry args={[DESK_W, 0.2, 0.05]} />
+        {mSteel}
+      </mesh>
+      {/* heavy square-tube steel legs + side rails */}
       {legXs.map((x) =>
         legZs.map((z) => (
-          <mesh key={`${x}:${z}`} position={[x, (DESK_Y - 0.3 - 2) / 2 + 0.1, z]} castShadow receiveShadow>
-            <boxGeometry args={[0.15, DESK_Y - 0.3 + 2, 0.15]} />
-            {mMetal}
+          <mesh key={`${x}:${z}`} position={[x, legTop - legH / 2, z]} castShadow receiveShadow>
+            <boxGeometry args={[0.16, legH, 0.16]} />
+            {mSteel}
           </mesh>
         )),
       )}
-      {/* lower shelf */}
-      <mesh position={[0, -1.2, 0]} receiveShadow castShadow>
-        <boxGeometry args={[5.9, 0.08, DESK_D - 0.3]} />
-        {mMetal}
+      {legXs.map((x) => (
+        <mesh key={`rail${x}`} position={[x, -1.35, 0]} castShadow>
+          <boxGeometry args={[0.1, 0.1, DESK_D - 0.5]} />
+          {mSteel}
+        </mesh>
+      ))}
+      {/* lower shelf (steel) */}
+      <mesh position={[0, -1.3, 0]} receiveShadow castShadow>
+        <boxGeometry args={[DESK_W - 0.5, 0.06, DESK_D - 0.4]} />
+        {mSteelLt}
       </mesh>
+      {/* drawer bank under the right side */}
+      <group position={[DESK_W / 2 - 1.3, 0, 0]}>
+        <mesh position={[0, DESK_Y - 0.75, 0]} castShadow receiveShadow>
+          <boxGeometry args={[1.7, 1.1, DESK_D - 0.4]} />
+          {mSteelLt}
+        </mesh>
+        {[-0.35, 0.0, 0.35].map((dy) => (
+          <group key={dy} position={[0, DESK_Y - 0.55 + dy, DESK_D / 2 - 0.18]}>
+            <mesh castShadow>
+              <boxGeometry args={[1.5, 0.3, 0.04]} />
+              <meshStandardMaterial color={'#43464c'} metalness={0.7} roughness={0.4} />
+            </mesh>
+            <mesh position={[0, 0, 0.04]} castShadow>
+              <boxGeometry args={[0.7, 0.05, 0.05]} />
+              {mSteel}
+            </mesh>
+          </group>
+        ))}
+      </group>
+      {/* bench vise clamped to the front-left edge */}
+      <group position={[-DESK_W / 2 + 1.1, DESK_Y + 0.02, DESK_D / 2 - 0.3]}>
+        <mesh position={[0, 0.12, 0]} castShadow>
+          <boxGeometry args={[0.4, 0.24, 0.3]} />
+          <meshStandardMaterial color={'#3a2622'} metalness={0.5} roughness={0.5} />
+        </mesh>
+        <mesh position={[0, 0.12, 0.28]} castShadow>
+          <boxGeometry args={[0.44, 0.28, 0.1]} />
+          <meshStandardMaterial color={'#3a2622'} metalness={0.5} roughness={0.5} />
+        </mesh>
+        <mesh position={[0, 0.12, 0.42]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+          <cylinderGeometry args={[0.03, 0.03, 0.4, 8]} />
+          {mSteelLt}
+        </mesh>
+      </group>
     </group>
   )
 }
@@ -72,20 +125,20 @@ function Shell() {
   const ceil = useMemo(() => ceilingTexture([10, 5]), [])
   return (
     <group>
-      {/* warm sealed-concrete floor */}
+      {/* dark sealed-concrete floor */}
       <mesh position={[0, -2, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[80, 80]} />
-        <meshStandardMaterial map={concrete} color={'#ffffff'} metalness={0.02} roughness={0.95} />
+        <meshStandardMaterial map={concrete} color={'#44423e'} metalness={0.03} roughness={0.94} />
       </mesh>
-      {/* left wall — OSB / plywood sheeting */}
+      {/* left wall — dark industrial board */}
       <mesh position={[-8, 2.5, 3.5]} rotation={[0, Math.PI / 2, 0]} receiveShadow>
         <planeGeometry args={[15, 12]} />
-        <meshStandardMaterial map={plywood} color={'#ffffff'} metalness={0.02} roughness={0.9} />
+        <meshStandardMaterial map={plywood} color={'#38342a'} metalness={0.02} roughness={0.9} />
       </mesh>
-      {/* warm wood-board ceiling */}
+      {/* dark board ceiling */}
       <mesh position={[0, 7, 4]} rotation={[Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[40, 16]} />
-        <meshStandardMaterial map={ceil} color={'#ffffff'} metalness={0.02} roughness={0.92} />
+        <meshStandardMaterial map={ceil} color={'#3a3026'} metalness={0.02} roughness={0.92} />
       </mesh>
       {/* exposed warm-wood joists running across the ceiling */}
       {[-6, -3, 0, 3, 6, 9].map((z) => (
@@ -332,7 +385,7 @@ function WallDressing() {
 /** A hanging fluorescent shop light over the bench — motivates the warm key. */
 function ShopLight() {
   return (
-    <group position={[0, 5.4, -0.3]}>
+    <group position={[0, 5.4, -1.8]}>
       {/* suspension rods */}
       {[-1.4, 1.4].map((x) => (
         <mesh key={x} position={[x, 0.8, 0]}>
@@ -342,17 +395,17 @@ function ShopLight() {
       ))}
       {/* housing */}
       <RoundedBox args={[3.4, 0.18, 0.7]} radius={0.04} smoothness={3} castShadow>
-        <meshStandardMaterial color={'#33302a'} metalness={0.6} roughness={0.45} />
+        <meshStandardMaterial color={'#2a2620'} metalness={0.6} roughness={0.45} />
       </RoundedBox>
-      {/* two glowing tubes */}
+      {/* two glowing amber tubes */}
       {[-0.18, 0.18].map((z) => (
         <mesh key={z} position={[0, -0.1, z]}>
           <boxGeometry args={[3.1, 0.05, 0.14]} />
-          <meshStandardMaterial color={'#fff1d8'} emissive={KEY} emissiveIntensity={2.4} toneMapped={false} />
+          <meshStandardMaterial color={'#ffdca0'} emissive={'#ff9c3a'} emissiveIntensity={2.6} toneMapped={false} />
         </mesh>
       ))}
-      {/* the light pool it casts */}
-      <pointLight position={[0, -0.4, 0]} intensity={6} distance={11} decay={2} color={PRACTICAL} />
+      {/* the warm-amber light pool it casts */}
+      <pointLight position={[0, -0.4, 0]} intensity={6.5} distance={12} decay={2} color={'#ff9c3a'} />
     </group>
   )
 }
@@ -361,25 +414,25 @@ function Lighting() {
   const key = useRef<THREE.DirectionalLight>(null)
   return (
     <>
-      {/* neutral industrial fill so the garage reads, not a void */}
-      <ambientLight intensity={0.4} color={'#d6dae2'} />
-      <hemisphereLight args={['#565a63', '#141310', 0.7]} />
-      {/* fluorescent shop light key, casts the hero shadow */}
+      {/* dark, moody garage — low warm-amber fill, not daylight */}
+      <ambientLight intensity={0.22} color={'#ffc888'} />
+      <hemisphereLight args={['#4a3a24', '#0c0a08', 0.4]} />
+      {/* warm-amber shop light key, casts the hero shadow */}
       <directionalLight
         ref={key}
         position={[-2.5, 6.5, 3.0]}
-        intensity={1.9}
-        color={KEY}
+        intensity={1.55}
+        color={'#ffbe78'}
         castShadow
         shadow-mapSize={[2048, 2048]}
         shadow-bias={-0.0004}
       >
         <orthographicCamera attach="shadow-camera" args={[-11, 11, 11, -11, 0.1, 32]} />
       </directionalLight>
-      {/* cool dawn rim from the window side */}
-      <directionalLight position={[-6, 4, -5]} intensity={0.5} color={RIM} />
-      {/* a single warm work-lamp pool over the bench (motivated, not decorative) */}
-      <pointLight position={[-1, 2.2, 1.2]} intensity={1.4} distance={7} decay={2} color={PRACTICAL} />
+      {/* cool dawn rim from the window side (subtle) */}
+      <directionalLight position={[-6, 4, -5]} intensity={0.4} color={RIM} />
+      {/* warm work-lamp pool over the bench */}
+      <pointLight position={[-1, 2.2, 1.2]} intensity={1.5} distance={7} decay={2} color={PRACTICAL} />
     </>
   )
 }
@@ -389,12 +442,12 @@ export default function Stage() {
     <Canvas
       shadows
       dpr={[1, 2]}
-      gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.28 }}
-      camera={{ position: [9.2, 4.4, 16.2], fov: 39, near: 0.1, far: 120 }}
+      gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.08 }}
+      camera={{ position: [8.4, 4.2, 13.0], fov: 42, near: 0.1, far: 120 }}
       onCreated={({ scene, camera }) => {
         scene.background = new THREE.Color(BG)
-        scene.fog = new THREE.Fog(BG, 22, 48)
-        camera.lookAt(-0.3, 1.35, -1.1)
+        scene.fog = new THREE.Fog(BG, 20, 46)
+        camera.lookAt(-0.2, 1.5, -2.4)
       }}
     >
       <Lighting />
@@ -410,17 +463,18 @@ export default function Stage() {
       <Window />
       <WallDressing />
       <ShopLight />
-      <Workbench />
-      <group position={[0, DESK_Y, 0]}>
-        <Workstation />
+      {/* bench cluster, pushed back against the wall */}
+      <group position={[0, 0, BENCH_Z]}>
+        <Workbench />
+        <group position={[0, DESK_Y, 0]}>
+          <Workstation />
+        </group>
+        <So101Arm />
       </group>
-      {/* the 3D printer, back on the bench (right of the robot) */}
-      <Printer3D position={[2.3, DESK_Y, -1.2]} rotation={[0, -0.5, 0]} scale={0.8} />
-      <So101Arm />
 
-      {/* background / floor dressing — pulled into frame */}
-      <PcTower position={[3.7, -2, 2.6]} />
-      <ToolChest position={[-4.0, -2, 3.1]} />
+      {/* floor dressing beside the bench, against the wall */}
+      <PcTower position={[5.2, -2, -2.4]} />
+      <ToolChest position={[-5.6, -2, -2.2]} />
 
       <EffectComposer>
         <Bloom luminanceThreshold={0.6} luminanceSmoothing={0.2} intensity={0.7} mipmapBlur />

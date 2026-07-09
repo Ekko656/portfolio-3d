@@ -11,7 +11,7 @@ import * as THREE from 'three'
 const WIN = { x: -4.2, y: 3.1, w: 3.2, h: 3.8 } // opening
 const WALL = { z: -4.0, thick: 0.6, cy: 3, w: 172, h: 46 }
 const FRAME_COL = '#bcb19a' // weathered warm-white painted casing
-const WALL_COL = '#5a4632' // warm OSB/plywood back wall (was near-black)
+const WALL_COL = '#332619' // dark warm garage wall
 
 function makeWallGeometry() {
   const s = new THREE.Shape()
