@@ -23,13 +23,13 @@ function finish(c: HTMLCanvasElement, repeat: [number, number]) {
 /** Poured concrete: mottled base, speckle aggregate, faint cracks + stains. */
 export function concreteTexture(repeat: [number, number] = [6, 6]) {
   const { c, ctx } = canvas(512)
-  ctx.fillStyle = '#26231d'
+  ctx.fillStyle = '#8c7f66' // warm sealed-concrete mid-tone (reads as a material)
   ctx.fillRect(0, 0, 512, 512)
   // mottling
   for (let i = 0; i < 1400; i++) {
     const r = 6 + Math.random() * 34
-    const g = 24 + Math.floor(Math.random() * 18)
-    ctx.fillStyle = `rgba(${g + 6},${g + 3},${g},${0.05 + Math.random() * 0.06})`
+    const g = 96 + Math.floor(Math.random() * 40)
+    ctx.fillStyle = `rgba(${g + 6},${g},${g - 14},${0.08 + Math.random() * 0.08})`
     ctx.beginPath()
     ctx.arc(Math.random() * 512, Math.random() * 512, r, 0, Math.PI * 2)
     ctx.fill()
@@ -75,11 +75,11 @@ export function concreteTexture(repeat: [number, number] = [6, 6]) {
 /** Plywood sheeting: horizontal grain streaks + occasional knots. */
 export function plywoodTexture(repeat: [number, number] = [3, 2]) {
   const { c, ctx } = canvas(512)
-  ctx.fillStyle = '#3a2e1f'
+  ctx.fillStyle = '#a8874f' // OSB / plywood tan (reads as a material)
   ctx.fillRect(0, 0, 512, 512)
   for (let y = 0; y < 512; y += 2) {
-    const shade = 30 + Math.floor(Math.sin(y * 0.08) * 8 + Math.random() * 14)
-    ctx.strokeStyle = `rgba(${shade + 26},${shade + 16},${shade},0.5)`
+    const shade = 110 + Math.floor(Math.sin(y * 0.08) * 14 + Math.random() * 24)
+    ctx.strokeStyle = `rgba(${shade + 20},${shade},${shade - 40},0.4)`
     ctx.lineWidth = 1
     ctx.beginPath()
     ctx.moveTo(0, y + Math.sin(y * 0.3) * 1.5)
@@ -103,14 +103,14 @@ export function plywoodTexture(repeat: [number, number] = [3, 2]) {
 /** Worn workbench wood top: planks with grain, scuffs and stains. */
 export function workbenchTexture(repeat: [number, number] = [2, 1]) {
   const { c, ctx } = canvas(512)
-  ctx.fillStyle = '#4a3320'
+  ctx.fillStyle = '#8a6338'
   ctx.fillRect(0, 0, 512, 512)
   // planks
   const planks = 5
   for (let p = 0; p < planks; p++) {
     const y0 = (p / planks) * 512
-    const base = 44 + Math.floor(Math.random() * 20)
-    ctx.fillStyle = `rgb(${base + 20},${base + 6},${base - 8})`
+    const base = 120 + Math.floor(Math.random() * 34)
+    ctx.fillStyle = `rgb(${base + 24},${base - 6},${base - 44})`
     ctx.fillRect(0, y0, 512, 512 / planks - 2)
     // grain streaks
     for (let i = 0; i < 60; i++) {
@@ -149,12 +149,12 @@ export function workbenchTexture(repeat: [number, number] = [2, 1]) {
 /** Corrugated / joisted ceiling boards, warm dark. */
 export function ceilingTexture(repeat: [number, number] = [8, 6]) {
   const { c, ctx } = canvas(256)
-  ctx.fillStyle = '#17130e'
+  ctx.fillStyle = '#4a3826' // warm wood boards
   ctx.fillRect(0, 0, 256, 256)
   for (let x = 0; x < 256; x += 32) {
     ctx.fillStyle = 'rgba(0,0,0,0.4)'
     ctx.fillRect(x, 0, 3, 256)
-    ctx.fillStyle = 'rgba(60,50,38,0.12)'
+    ctx.fillStyle = 'rgba(120,96,62,0.18)'
     ctx.fillRect(x + 4, 0, 2, 256)
   }
   return finish(c, repeat)

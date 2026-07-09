@@ -7,6 +7,7 @@ import So101Arm from '../components/arm/So101Arm'
 import Window from './Window'
 import Outdoors from './Outdoors'
 import Workstation from './Workstation'
+import Printer3D from './Printer3D'
 import { concreteTexture, plywoodTexture, pegboardTexture, workbenchTexture, ceilingTexture } from './textures'
 
 /**
@@ -15,16 +16,15 @@ import { concreteTexture, plywoodTexture, pegboardTexture, workbenchTexture, cei
  * establishes the room + scale; texture and station dressing come next.
  */
 
-// ---- palette (Big Hero 6 warm garage: warm woods/cream + teal tech accents) --
-const BG = '#150d05' // warm dark
-const CONCRETE = '#3a2c1e' // warm sealed floor
-const PLY = '#7a5a38' // warm wood-panel wall
-const WALL_WARM = '#a07d4f' // warm cream drywall
-const METAL = '#4a4038'
-const KEY = '#ffcf8f' // warm tungsten
-const PRACTICAL = '#ff9a4d' // warm lamp
-const RIM = '#9ec2ff' // cool dawn rim
-const TEAL = '#3fd6c4' // tech-glow accent
+// ---- palette (Big Hero 6 working GARAGE: concrete + OSB + industrial, teal tech) --
+const BG = '#0e0f11' // neutral industrial dark
+const CONCRETE = '#41434a' // grey sealed concrete floor
+const PLY = '#6b5a3c' // OSB / chipboard wall
+const METAL = '#3a3c42'
+const KEY = '#fff3dc' // neutral-warm shop fluorescent
+const PRACTICAL = '#ffb060' // warm work-lamp accent
+const RIM = '#9ec2ff' // cool dawn rim from the window
+// (teal accent reserved)
 
 const DESK_Y = 0.4
 
@@ -39,9 +39,9 @@ function Workbench() {
   const legZs = [-2.05, 2.05]
   return (
     <group>
-      {/* worn wood top */}
+      {/* worn butcher-block wood top */}
       <RoundedBox args={[6.4, 0.18, DESK_D]} radius={0.03} smoothness={4} position={[0, DESK_Y - 0.09, 0]} castShadow receiveShadow>
-        <meshStandardMaterial map={wood} color={'#6a4d33'} metalness={0.05} roughness={0.72} />
+        <meshStandardMaterial map={wood} color={'#ffffff'} metalness={0.03} roughness={0.68} />
       </RoundedBox>
       {/* steel apron */}
       <mesh position={[0, DESK_Y - 0.24, 0]} castShadow>
@@ -72,20 +72,20 @@ function Shell() {
   const ceil = useMemo(() => ceilingTexture([10, 5]), [])
   return (
     <group>
-      {/* concrete floor */}
+      {/* warm sealed-concrete floor */}
       <mesh position={[0, -2, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[80, 80]} />
-        <meshStandardMaterial map={concrete} color={CONCRETE} metalness={0.04} roughness={0.96} />
+        <meshStandardMaterial map={concrete} color={'#ffffff'} metalness={0.02} roughness={0.95} />
       </mesh>
-      {/* left wall (plywood) — interior-side of the back wall */}
+      {/* left wall — OSB / plywood sheeting */}
       <mesh position={[-8, 2.5, 3.5]} rotation={[0, Math.PI / 2, 0]} receiveShadow>
         <planeGeometry args={[15, 12]} />
-        <meshStandardMaterial map={plywood} color={PLY} metalness={0.05} roughness={0.9} />
+        <meshStandardMaterial map={plywood} color={'#ffffff'} metalness={0.02} roughness={0.9} />
       </mesh>
-      {/* ceiling boards (warm) */}
+      {/* warm wood-board ceiling */}
       <mesh position={[0, 7, 4]} rotation={[Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[40, 16]} />
-        <meshStandardMaterial map={ceil} color={'#3a2a18'} metalness={0.04} roughness={0.92} />
+        <meshStandardMaterial map={ceil} color={'#ffffff'} metalness={0.02} roughness={0.92} />
       </mesh>
       {/* exposed warm-wood joists running across the ceiling */}
       {[-6, -3, 0, 3, 6, 9].map((z) => (
@@ -125,43 +125,6 @@ function PcTower({ position }: { position: [number, number, number] }) {
         <cylinderGeometry args={[0.05, 0.05, 0.9, 6]} />
         <meshStandardMaterial color={'#0d0d0f'} roughness={0.9} />
       </mesh>
-    </group>
-  )
-}
-
-/** A steel shelving unit stacked with parts boxes, totes and cans. */
-function Shelving({ position, rotation = [0, 0, 0] }: { position: [number, number, number]; rotation?: [number, number, number] }) {
-  const shelfYs = [0, 1.3, 2.6, 3.9]
-  const box = (x: number, y: number, z: number, w: number, h: number, d: number, c: string) => (
-    <mesh position={[x, y, z]} castShadow receiveShadow>
-      <boxGeometry args={[w, h, d]} />
-      <meshStandardMaterial color={c} metalness={0.1} roughness={0.7} />
-    </mesh>
-  )
-  return (
-    <group position={position} rotation={rotation as unknown as THREE.Euler}>
-      {/* uprights */}
-      {[[-1.4, -0.7], [1.4, -0.7], [-1.4, 0.7], [1.4, 0.7]].map(([x, z], i) => (
-        <mesh key={i} position={[x, 2, z]} castShadow>
-          <boxGeometry args={[0.1, 4.2, 0.1]} />
-          <meshStandardMaterial color={'#2b2620'} metalness={0.4} roughness={0.6} />
-        </mesh>
-      ))}
-      {/* shelves + contents */}
-      {shelfYs.map((y, si) => (
-        <group key={y}>
-          <mesh position={[0, y, 0]} castShadow receiveShadow>
-            <boxGeometry args={[3.0, 0.08, 1.5]} />
-            <meshStandardMaterial color={'#332c22'} metalness={0.2} roughness={0.7} />
-          </mesh>
-          {si === 0 && (<>{box(-0.8, y + 0.35, 0, 0.9, 0.6, 1.1, '#5a4636')}{box(0.5, y + 0.3, 0.1, 1.0, 0.5, 1.0, '#3a4d63')}</>)}
-          {si === 1 && (<>{box(-0.6, y + 0.3, 0, 1.2, 0.5, 1.1, '#4a5340')}{box(0.8, y + 0.4, -0.1, 0.7, 0.7, 0.8, '#63503a')}</>)}
-          {si === 2 && (<>{box(-0.9, y + 0.25, 0.1, 0.7, 0.42, 0.9, '#3e3a52')}{box(0.2, y + 0.3, 0, 1.1, 0.5, 1.0, '#5a4636')}
-            <mesh position={[1.1, y + 0.28, 0.2]} castShadow><cylinderGeometry args={[0.22, 0.22, 0.55, 16]} /><meshStandardMaterial color={'#7a6a4a'} metalness={0.4} roughness={0.6} /></mesh></>)}
-          {si === 3 && (<>{box(-0.5, y + 0.3, 0, 1.3, 0.5, 1.1, '#332c3e')}
-            <mesh position={[0.9, y + 0.3, 0]} castShadow><cylinderGeometry args={[0.2, 0.2, 0.6, 14]} /><meshStandardMaterial color={'#4a4d55'} metalness={0.6} roughness={0.4} /></mesh></>)}
-        </group>
-      ))}
     </group>
   )
 }
@@ -398,14 +361,14 @@ function Lighting() {
   const key = useRef<THREE.DirectionalLight>(null)
   return (
     <>
-      {/* warm, lifted ambient — cozy garage, not a void */}
-      <ambientLight intensity={0.42} color={'#ffe0b0'} />
-      <hemisphereLight args={['#6a5238', '#1a1109', 0.8]} />
-      {/* warm key from the shop light, casts the hero shadow */}
+      {/* neutral industrial fill so the garage reads, not a void */}
+      <ambientLight intensity={0.4} color={'#d6dae2'} />
+      <hemisphereLight args={['#565a63', '#141310', 0.7]} />
+      {/* fluorescent shop light key, casts the hero shadow */}
       <directionalLight
         ref={key}
         position={[-2.5, 6.5, 3.0]}
-        intensity={1.7}
+        intensity={1.9}
         color={KEY}
         castShadow
         shadow-mapSize={[2048, 2048]}
@@ -414,53 +377,10 @@ function Lighting() {
         <orthographicCamera attach="shadow-camera" args={[-11, 11, 11, -11, 0.1, 32]} />
       </directionalLight>
       {/* cool dawn rim from the window side */}
-      <directionalLight position={[-6, 4, -5]} intensity={0.45} color={RIM} />
-      {/* warm bounce/fill pools for a cozy wrap */}
-      <pointLight position={[-3, 1.5, 2]} intensity={2.2} distance={9} decay={2} color={'#ff9d54'} />
-      <pointLight position={[4, 1.8, 1.5]} intensity={1.6} distance={8} decay={2} color={'#ffb060'} />
+      <directionalLight position={[-6, 4, -5]} intensity={0.5} color={RIM} />
+      {/* a single warm work-lamp pool over the bench (motivated, not decorative) */}
+      <pointLight position={[-1, 2.2, 1.2]} intensity={1.4} distance={7} decay={2} color={PRACTICAL} />
     </>
-  )
-}
-
-/** Warm string lights draped along the wall — a cozy Big Hero 6 staple. */
-function StringLights() {
-  const bulbs = useMemo(() => {
-    const arr: [number, number, number][] = []
-    const n = 14
-    for (let i = 0; i <= n; i++) {
-      const t = i / n
-      const x = -6.5 + t * 12.5
-      const sag = Math.sin(t * Math.PI) * 0.5
-      arr.push([x, 5.1 - sag, -3.1])
-    }
-    return arr
-  }, [])
-  return (
-    <group>
-      {/* the wire */}
-      {bulbs.slice(0, -1).map((b, i) => {
-        const n = bulbs[i + 1]
-        const mid: [number, number, number] = [(b[0] + n[0]) / 2, (b[1] + n[1]) / 2, (b[2] + n[2]) / 2]
-        const len = Math.hypot(n[0] - b[0], n[1] - b[1])
-        const ang = Math.atan2(n[1] - b[1], n[0] - b[0])
-        return (
-          <mesh key={`w${i}`} position={mid} rotation={[0, 0, ang]}>
-            <cylinderGeometry args={[0.012, 0.012, len, 4]} />
-            <meshStandardMaterial color={'#1a1109'} />
-          </mesh>
-        )
-      })}
-      {/* warm bulbs (emissive) */}
-      {bulbs.map((b, i) => (
-        <mesh key={`b${i}`} position={[b[0], b[1] - 0.12, b[2]]}>
-          <sphereGeometry args={[0.075, 10, 8]} />
-          <meshStandardMaterial color={'#ffe6b0'} emissive={'#ffb64a'} emissiveIntensity={3.2} toneMapped={false} />
-        </mesh>
-      ))}
-      {/* a couple of real lights so the string actually warms the wall */}
-      <pointLight position={[-3, 4.7, -2.8]} intensity={1.4} distance={7} decay={2} color={'#ffb64a'} />
-      <pointLight position={[3, 4.7, -2.8]} intensity={1.4} distance={7} decay={2} color={'#ffb64a'} />
-    </group>
   )
 }
 
@@ -478,7 +398,6 @@ export default function Stage() {
       }}
     >
       <Lighting />
-      <StringLights />
 
       <Environment resolution={256}>
         <Lightformer intensity={1.0} color={KEY} position={[-3, 4, 3]} scale={[6, 6, 1]} />
@@ -495,11 +414,13 @@ export default function Stage() {
       <group position={[0, DESK_Y, 0]}>
         <Workstation />
       </group>
+      {/* the 3D printer, back on the bench (right of the robot) */}
+      <Printer3D position={[2.3, DESK_Y, -1.2]} rotation={[0, -0.5, 0]} scale={0.8} />
       <So101Arm />
 
-      {/* background / floor dressing */}
-      <PcTower position={[4.3, -2, 1.2]} />
-      <ToolChest position={[-4.7, -2, 2.4]} />
+      {/* background / floor dressing — pulled into frame */}
+      <PcTower position={[3.7, -2, 2.6]} />
+      <ToolChest position={[-4.0, -2, 3.1]} />
 
       <EffectComposer>
         <Bloom luminanceThreshold={0.6} luminanceSmoothing={0.2} intensity={0.7} mipmapBlur />

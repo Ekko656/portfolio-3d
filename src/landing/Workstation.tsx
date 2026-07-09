@@ -68,11 +68,12 @@ function drawTelemetry(ctx: CanvasRenderingContext2D, t: number, hist: number[])
   if (Math.sin(t * 3) > 0) { ctx.fillStyle = '#3fd6c4'; ctx.fillRect(430, H - 28, 9, 14) }
 }
 
-function Monitor({ position }: { position: [number, number, number] }) {
+function Monitor({ position, rotation = [0, 0, 0], mode }: { position: [number, number, number]; rotation?: [number, number, number]; mode: 'telemetry' | 'off' }) {
   const scr = useMemo(makeScreenTexture, [])
   const hist = useRef<number[]>(new Array(72).fill(0))
   const frame = useRef(0)
   useFrame(({ clock }) => {
+    if (mode !== 'telemetry') return
     frame.current++
     if (frame.current % 2) return
     hist.current.push(((armState as unknown as Record<string, number>).Rotation ?? 0) / 1.9)
@@ -81,7 +82,7 @@ function Monitor({ position }: { position: [number, number, number] }) {
     scr.tex.needsUpdate = true
   })
   return (
-    <group position={position}>
+    <group position={position} rotation={rotation as unknown as THREE.Euler}>
       {/* flat base + slim neck (modern) */}
       <RoundedBox args={[0.62, 0.03, 0.32]} radius={0.015} smoothness={3} position={[0, 0.015, 0.02]} castShadow>
         <meshStandardMaterial color={BODY_LT} metalness={0.6} roughness={0.4} />
@@ -91,50 +92,68 @@ function Monitor({ position }: { position: [number, number, number] }) {
         <meshStandardMaterial color={BODY_LT} metalness={0.6} roughness={0.4} />
       </mesh>
       {/* thin-bezel panel */}
-      <RoundedBox args={[1.74, 1.0, 0.045]} radius={0.02} smoothness={3} position={[0, 0.86, 0]} castShadow>
+      <RoundedBox args={[1.5, 0.88, 0.045]} radius={0.02} smoothness={3} position={[0, 0.78, 0]} castShadow>
         <meshStandardMaterial color={BODY} metalness={0.5} roughness={0.5} />
       </RoundedBox>
       {/* screen */}
-      <mesh position={[0, 0.87, 0.026]}>
-        <planeGeometry args={[1.66, 0.92]} />
-        <meshBasicMaterial map={scr.tex} toneMapped={false} />
+      <mesh position={[0, 0.79, 0.026]}>
+        <planeGeometry args={[1.42, 0.8]} />
+        {mode === 'telemetry' ? (
+          <meshBasicMaterial map={scr.tex} toneMapped={false} />
+        ) : (
+          <meshStandardMaterial color={'#05070a'} metalness={0.2} roughness={0.12} emissive={'#0a1418'} emissiveIntensity={0.12} />
+        )}
       </mesh>
-      {/* chin logo + power LED */}
-      <mesh position={[0.74, 0.4, 0.03]}>
+      {/* power LED */}
+      <mesh position={[0.64, 0.36, 0.03]}>
         <boxGeometry args={[0.028, 0.018, 0.02]} />
-        <meshStandardMaterial color={'#7fffd0'} emissive={'#3fd6c4'} emissiveIntensity={3} toneMapped={false} />
+        <meshStandardMaterial
+          color={mode === 'telemetry' ? '#7fffd0' : '#401515'}
+          emissive={mode === 'telemetry' ? '#3fd6c4' : '#200'}
+          emissiveIntensity={mode === 'telemetry' ? 3 : 0.4}
+          toneMapped={false}
+        />
       </mesh>
-      {/* screen glow spill */}
-      <pointLight position={[0, 0.87, 0.4]} intensity={0.5} distance={2.4} decay={2} color={'#2fd0c0'} />
+      {/* cable dropping off the back toward the PC */}
+      <mesh position={[0, 0.2, -0.12]} rotation={[0.5, 0, 0]}>
+        <cylinderGeometry args={[0.018, 0.018, 0.5, 6]} />
+        <meshStandardMaterial color={'#0d0d0f'} roughness={0.9} />
+      </mesh>
+      {mode === 'telemetry' && <pointLight position={[0, 0.79, 0.4]} intensity={0.5} distance={2.2} decay={2} color={'#2fd0c0'} />}
     </group>
   )
 }
 
-function Keyboard({ position }: { position: [number, number, number] }) {
+function Keyboard({ position, rotation = [0, 0, 0] }: { position: [number, number, number]; rotation?: [number, number, number] }) {
   const ref = useRef<THREE.InstancedMesh>(null)
   const keys = useMemo(() => {
-    const arr: [number, number][] = []
-    for (let r = 0; r < 5; r++) for (let cc = 0; cc < 17; cc++) arr.push([cc, r])
+    const arr: { x: number; z: number; w: number }[] = []
+    // 6 tidy rows; bottom row has a wide spacebar
+    for (let r = 0; r < 5; r++) {
+      for (let cc = 0; cc < 19; cc++) arr.push({ x: -0.54 + cc * 0.06, z: -0.15 + r * 0.058, w: 0.048 })
+    }
+    arr.push({ x: 0, z: 0.19, w: 0.34 }) // spacebar
     return arr
   }, [])
   const dummy = useMemo(() => new THREE.Object3D(), [])
   useEffect(() => {
     if (!ref.current) return
-    keys.forEach(([cx, r], i) => {
-      dummy.position.set(-0.48 + cx * 0.06, 0.035, -0.12 + r * 0.06)
+    keys.forEach((k, i) => {
+      dummy.position.set(k.x, 0.03, k.z)
+      dummy.scale.set(k.w / 0.048, 1, 1)
       dummy.updateMatrix()
       ref.current!.setMatrixAt(i, dummy.matrix)
     })
     ref.current.instanceMatrix.needsUpdate = true
   }, [keys, dummy])
   return (
-    <group position={position}>
-      <RoundedBox args={[1.12, 0.04, 0.4]} radius={0.02} smoothness={3} castShadow>
-        <meshStandardMaterial color={'#191b1f'} metalness={0.4} roughness={0.6} />
+    <group position={position} rotation={rotation as unknown as THREE.Euler}>
+      <RoundedBox args={[1.24, 0.035, 0.44]} radius={0.02} smoothness={4} castShadow receiveShadow>
+        <meshStandardMaterial color={'#16181c'} metalness={0.35} roughness={0.55} />
       </RoundedBox>
       <instancedMesh ref={ref} args={[undefined as never, undefined as never, keys.length]} castShadow>
-        <boxGeometry args={[0.05, 0.022, 0.05]} />
-        <meshStandardMaterial color={'#2b2e35'} metalness={0.3} roughness={0.7} />
+        <boxGeometry args={[0.048, 0.02, 0.048]} />
+        <meshStandardMaterial color={'#2d3037'} metalness={0.25} roughness={0.65} />
       </instancedMesh>
     </group>
   )
@@ -142,61 +161,45 @@ function Keyboard({ position }: { position: [number, number, number] }) {
 
 function Mouse({ position }: { position: [number, number, number] }) {
   return (
-    <mesh position={position} castShadow>
-      <sphereGeometry args={[0.09, 16, 12]} />
-      <meshStandardMaterial color={'#1a1c20'} metalness={0.3} roughness={0.55} />
-    </mesh>
-  )
-}
-
-/** A small desk dock the robot + monitor plug into (has an empty port). */
-function Dock({ position }: { position: [number, number, number] }) {
-  return (
     <group position={position}>
-      <RoundedBox args={[0.5, 0.12, 0.28]} radius={0.02} smoothness={3} castShadow>
-        <meshStandardMaterial color={'#202227'} metalness={0.55} roughness={0.45} />
-      </RoundedBox>
-      {/* row of ports; the middle one is empty (target for the loose plug) */}
-      {[-0.14, -0.05, 0.04, 0.13].map((x, i) => (
-        <mesh key={x} position={[x, 0.02, 0.145]}>
-          <boxGeometry args={[0.05, 0.035, 0.02]} />
-          <meshStandardMaterial color={i === 2 ? '#c9a24a' : '#0b0c0e'} metalness={0.6} roughness={0.4} emissive={i === 2 ? '#3a2a08' : '#000'} emissiveIntensity={i === 2 ? 0.5 : 0} />
-        </mesh>
-      ))}
-      {/* status LED */}
-      <mesh position={[0.2, 0.065, 0]}>
-        <boxGeometry args={[0.02, 0.015, 0.015]} />
-        <meshStandardMaterial color={'#8fff9f'} emissive={'#2fbf4a'} emissiveIntensity={2.5} toneMapped={false} />
+      <mesh castShadow scale={[1, 0.55, 1.5]}>
+        <sphereGeometry args={[0.08, 18, 12]} />
+        <meshStandardMaterial color={'#17191d'} metalness={0.25} roughness={0.5} />
+      </mesh>
+      {/* scroll wheel slit */}
+      <mesh position={[0, 0.06, 0.03]}>
+        <boxGeometry args={[0.014, 0.02, 0.05]} />
+        <meshStandardMaterial color={'#2fd0c0'} emissive={'#1a6a64'} emissiveIntensity={0.6} toneMapped={false} />
       </mesh>
     </group>
   )
 }
 
-/** The loose data plug the arm grabs — a braided cable + a chunky connector. */
-function LoosePlug({ position }: { position: [number, number, number] }) {
+/** The data plug the arm seats into the dark monitor to boot it — a neat,
+ *  short routed cable ending in a connector, laying accessibly on the desk. */
+function Connector({ position, rotation = [0, 0, 0] }: { position: [number, number, number]; rotation?: [number, number, number] }) {
   const geom = useMemo(() => {
     const pts = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(-0.7, 0.02, -0.15),
-      new THREE.Vector3(-0.4, 0.03, 0.05),
-      new THREE.Vector3(-0.12, 0.04, -0.08),
-      new THREE.Vector3(0.05, 0.05, 0.02),
+      new THREE.Vector3(-0.55, 0.02, 0),
+      new THREE.Vector3(-0.28, 0.025, 0.02),
+      new THREE.Vector3(-0.05, 0.03, 0),
+      new THREE.Vector3(0.12, 0.035, 0.01),
     ])
-    return new THREE.TubeGeometry(pts, 30, 0.02, 8)
+    return new THREE.TubeGeometry(pts, 24, 0.02, 8)
   }, [])
   return (
-    <group position={position}>
+    <group position={position} rotation={rotation as unknown as THREE.Euler}>
       <mesh geometry={geom} castShadow>
         <meshStandardMaterial color={RUBBER} metalness={0.2} roughness={0.85} />
       </mesh>
-      {/* the connector head (what seats into the dock) */}
-      <group position={[0.1, 0.05, 0.02]} rotation={[0, 0.5, 0]}>
-        <mesh castShadow>
-          <boxGeometry args={[0.13, 0.06, 0.06]} />
-          <meshStandardMaterial color={'#2a2c30'} metalness={0.5} roughness={0.45} />
-        </mesh>
-        <mesh position={[0.09, 0, 0]} castShadow>
-          <boxGeometry args={[0.05, 0.035, 0.03]} />
-          <meshStandardMaterial color={'#c9a24a'} metalness={0.85} roughness={0.3} />
+      {/* USB-C-style connector head */}
+      <group position={[0.16, 0.035, 0.01]}>
+        <RoundedBox args={[0.11, 0.05, 0.05]} radius={0.015} smoothness={2} castShadow>
+          <meshStandardMaterial color={'#26282d'} metalness={0.5} roughness={0.4} />
+        </RoundedBox>
+        <mesh position={[0.08, 0, 0]} castShadow>
+          <boxGeometry args={[0.05, 0.022, 0.03]} />
+          <meshStandardMaterial color={'#c9ccd2'} metalness={0.9} roughness={0.25} />
         </mesh>
       </group>
     </group>
@@ -204,14 +207,16 @@ function LoosePlug({ position }: { position: [number, number, number] }) {
 }
 
 export default function Workstation() {
-  // relative to the bench top; the arm base is near x=0, z=-0.15
+  // A normal dual-monitor setup: two screens side by side at the same depth
+  // with a slight inward toe-in, sat to the LEFT so the robot never blocks them.
+  // Keyboard + mouse in front; the connector lays within the arm's reach.
   return (
     <group>
-      <Monitor position={[-0.25, 0, -1.75]} />
-      <Keyboard position={[0.15, 0, 0.72]} />
-      <Mouse position={[0.95, 0, 0.72]} />
-      <Dock position={[1.7, 0, -0.35]} />
-      <LoosePlug position={[1.05, 0, 0.05]} />
+      <Monitor position={[-2.95, 0, -1.15]} rotation={[0, 0.14, 0]} mode="telemetry" />
+      <Monitor position={[-1.55, 0, -1.15]} rotation={[0, -0.14, 0]} mode="off" />
+      <Keyboard position={[-2.15, 0, 0.35]} rotation={[0, 0.05, 0]} />
+      <Mouse position={[-1.1, 0, 0.45]} />
+      <Connector position={[0.95, 0, 0.2]} rotation={[0, -0.5, 0]} />
     </group>
   )
 }
