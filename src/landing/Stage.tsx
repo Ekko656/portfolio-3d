@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { Environment, Lightformer, RoundedBox } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
@@ -6,6 +6,7 @@ import * as THREE from 'three'
 import So101Arm from '../components/arm/So101Arm'
 import Window from './Window'
 import Outdoors from './Outdoors'
+import { concreteTexture, plywoodTexture, pegboardTexture } from './textures'
 
 /**
  * The warm dim home-garage workshop at a rainy dawn. Blockout stage: real
@@ -59,18 +60,20 @@ function Workbench() {
 
 /** Concrete floor, a left corner wall, and a ceiling — the room shell. */
 function Shell() {
+  const concrete = useMemo(() => concreteTexture([7, 7]), [])
+  const plywood = useMemo(() => plywoodTexture([2, 2]), [])
   return (
     <group>
       {/* concrete floor */}
       <mesh position={[0, -2, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[80, 80]} />
-        <meshStandardMaterial color={CONCRETE} metalness={0.05} roughness={0.92} />
+        <meshStandardMaterial map={concrete} color={CONCRETE} metalness={0.04} roughness={0.95} />
       </mesh>
       {/* left wall (plywood) forming a corner with the window wall — kept
           interior-side of the back wall so it never occludes the outdoors */}
       <mesh position={[-8, 2.5, 3.5]} rotation={[0, Math.PI / 2, 0]} receiveShadow>
         <planeGeometry args={[15, 12]} />
-        <meshStandardMaterial color={PLY} metalness={0.05} roughness={0.9} />
+        <meshStandardMaterial map={plywood} color={PLY} metalness={0.05} roughness={0.9} />
       </mesh>
       {/* ceiling — interior only, stops at the back wall so it doesn't occlude
           the dawn sky seen through the window */}
@@ -78,6 +81,39 @@ function Shell() {
         <planeGeometry args={[40, 15]} />
         <meshStandardMaterial color={'#100d0a'} metalness={0.05} roughness={0.95} />
       </mesh>
+    </group>
+  )
+}
+
+/** A pegboard panel on the back wall + a small shelf of parts bins. */
+function WallDressing() {
+  const peg = useMemo(() => pegboardTexture([2.4, 1.4]), [])
+  const binColors = ['#3a4d63', '#5a4636', '#4a5340', '#63503a', '#3e3a52']
+  return (
+    <group>
+      {/* pegboard panel, right of the window, above the bench */}
+      <mesh position={[2.6, 3.0, -3.33]} castShadow receiveShadow>
+        <boxGeometry args={[4.6, 2.8, 0.06]} />
+        <meshStandardMaterial map={peg} metalness={0.05} roughness={0.85} />
+      </mesh>
+      {/* pegboard frame */}
+      <mesh position={[2.6, 3.0, -3.38]}>
+        <boxGeometry args={[4.8, 3.0, 0.05]} />
+        <meshStandardMaterial color={'#241a12'} metalness={0.2} roughness={0.8} />
+      </mesh>
+      {/* a wall shelf with parts bins, above-right */}
+      <group position={[4.6, 1.9, -3.25]}>
+        <mesh castShadow receiveShadow>
+          <boxGeometry args={[2.6, 0.09, 0.7]} />
+          <meshStandardMaterial color={'#2a2118'} metalness={0.15} roughness={0.8} />
+        </mesh>
+        {[-0.9, -0.3, 0.3, 0.9].map((x, i) => (
+          <mesh key={x} position={[x, 0.2, 0]} castShadow>
+            <boxGeometry args={[0.5, 0.32, 0.5]} />
+            <meshStandardMaterial color={binColors[i % binColors.length]} metalness={0.1} roughness={0.7} />
+          </mesh>
+        ))}
+      </group>
     </group>
   )
 }
@@ -114,7 +150,9 @@ function Lighting() {
   const key = useRef<THREE.DirectionalLight>(null)
   return (
     <>
-      <ambientLight intensity={0.1} color={KEY} />
+      <ambientLight intensity={0.17} color={KEY} />
+      {/* soft cool fill so the room's surfaces read out of pure black */}
+      <hemisphereLight args={['#4a4636', '#0a0806', 0.35]} />
       {/* warm key roughly from the shop light, casts the hero shadow */}
       <directionalLight
         ref={key}
@@ -157,6 +195,7 @@ export default function Stage() {
       <Outdoors />
       <Shell />
       <Window />
+      <WallDressing />
       <ShopLight />
       <Workbench />
       <So101Arm />
