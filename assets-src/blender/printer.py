@@ -150,7 +150,7 @@ def build():
     extrusion(2 * H, (0, yb, ztop), 'X', ALU)  # top bar
 
     # ---- X gantry (spans posts) + carriage + hotend + belt ----
-    extrusion(2 * H, (0, yb - 0.14, gz), 'X', ALU)                 # gantry beam
+    extrusion(2 * H + 0.22, (0, yb - 0.14, gz), 'X', ALU)         # gantry beam (overlaps the posts)
     box((2 * H - 0.2, 0.02, 0.012), (0, yb - 0.06, gz + 0.07), mat('belt', (0.02, 0.02, 0.02), 0.1, 0.9), bevel=0)
     nema17((-H - 0.02, yb - 0.14, gz), BLK, 'Y')                   # X stepper on the left
     cx = 0.15
@@ -221,11 +221,17 @@ def setup_scene():
     bpy.ops.object.light_add(type='AREA', location=(-3.5, 2.5, 3))
     r = bpy.context.active_object; r.data.energy = 500; r.data.size = 3; r.data.color = (0.55, 0.66, 1.0)
 
-    bpy.ops.object.empty_add(location=(0, 0, 1.1))
+    bpy.ops.object.empty_add(location=(0, 0, 1.2))
     tgt = bpy.context.active_object
-    bpy.ops.object.camera_add(location=(5.2, -6.0, 3.6))
+    front = '--front' in (sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else [])
+    loc = (0.01, -8.0, 1.2) if front else (5.2, -6.0, 3.6)
+    bpy.ops.object.camera_add(location=loc)
     cam = bpy.context.active_object
-    cam.data.lens = 55
+    if front:
+        cam.data.type = 'ORTHO'
+        cam.data.ortho_scale = 4.0
+    else:
+        cam.data.lens = 55
     con = cam.constraints.new('TRACK_TO')
     con.target = tgt
     con.track_axis = 'TRACK_NEGATIVE_Z'

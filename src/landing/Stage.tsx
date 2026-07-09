@@ -7,6 +7,7 @@ import So101Arm from '../components/arm/So101Arm'
 import Window from './Window'
 import Outdoors from './Outdoors'
 import Workstation from './Workstation'
+import BlenderPrinter from './BlenderPrinter'
 import { concreteTexture, plywoodTexture, pegboardTexture, workbenchTexture, ceilingTexture } from './textures'
 
 /**
@@ -469,6 +470,8 @@ export default function Stage() {
         <group position={[0, DESK_Y, 0]}>
           <Workstation />
         </group>
+        {/* the Blender-modeled 3D printer, on the bench right */}
+        <BlenderPrinter position={[2.7, DESK_Y + 0.32, -0.35]} rotation={[0, -0.5, 0]} scale={0.42} />
         <So101Arm />
       </group>
 
