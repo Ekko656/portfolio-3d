@@ -174,7 +174,9 @@ function Meadow() {
     return g
   }, [])
   return (
-    <mesh geometry={geom} position={[-12, 0, -25]}>
+    // pushed back so the near edge stays behind the window wall (z < -4) — it
+    // must only ever be seen through the window, never poking into the room
+    <mesh geometry={geom} position={[-12, 0, -31]}>
       <meshBasicMaterial vertexColors toneMapped={false} fog={false} />
     </mesh>
   )
