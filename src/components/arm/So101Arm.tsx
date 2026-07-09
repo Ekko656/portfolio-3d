@@ -261,8 +261,10 @@ export default function So101Arm() {
 
     const apply = (v: Pose) => JOINT_NAMES.forEach((name, i) => j[name]?.setJointValue(v[i]))
 
-    // measured floor guard (exact FK) — bisect toward SAFE on Pitch/Elbow/Wrist
-    const CLEARANCE = 0.8
+    // measured floor guard (exact FK) — bisect toward SAFE on Pitch/Elbow/Wrist.
+    // Tracks the bench-top height so the (now smaller) arm never dips its tip
+    // through the workbench surface it stands on.
+    const CLEARANCE = 0.62
     const minTipY = () => {
       robotRef.current!.updateMatrixWorld(true)
       let m = Infinity
@@ -303,5 +305,7 @@ export default function So101Arm() {
   })
 
   if (!robot) return null
-  return <primitive object={robot} position={[-0.044, 0, -0.255]} rotation={[-Math.PI / 2, 0, 0]} scale={8} />
+  // scaled down toward a believable bench-robot size; base re-seated onto the
+  // workbench top (measured live). Poses are joint angles, so unaffected.
+  return <primitive object={robot} position={[-0.033, 0.11, -0.191]} rotation={[-Math.PI / 2, 0, 0]} scale={6} />
 }
