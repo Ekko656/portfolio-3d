@@ -1,5 +1,5 @@
 import { useMemo, useRef } from 'react'
-import { Canvas } from '@react-three/fiber'
+import { Canvas, useFrame } from '@react-three/fiber'
 import { Environment, Lightformer, RoundedBox } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
@@ -76,30 +76,26 @@ function Workbench() {
           {mSteel}
         </mesh>
       ))}
-      {/* lower shelf (steel) — right side only, leaving the left open for the PC */}
-      <mesh position={[1.8, -1.3, 0]} receiveShadow castShadow>
-        <boxGeometry args={[DESK_W - 4.4, 0.06, DESK_D - 0.4]} />
-        {mSteelLt}
-      </mesh>
-      {/* drawer bank under the right side — cabinet flush to the front */}
+      {/* full-height drawer cabinet on the right — floor up to just under the top */}
       <group position={[DESK_W / 2 - 1.35, 0, 0.02]}>
-        <mesh position={[0, -0.32, -0.02]} castShadow receiveShadow>
-          <boxGeometry args={[1.72, 1.1, DESK_D - 0.06]} />
+        <mesh position={[0, -0.88, -0.02]} castShadow receiveShadow>
+          <boxGeometry args={[1.76, 2.24, DESK_D - 0.06]} />
           {mSteelLt}
         </mesh>
-        {[-0.6, -0.24, 0.12].map((dy) => (
+        {/* three tall drawers filling the space, all below the benchtop */}
+        {[-1.6, -0.88, -0.16].map((dy, i) => (
           <group key={dy} position={[0, dy, DESK_D / 2 + 0.02]}>
-            <RoundedBox args={[1.64, 0.34, 0.05]} radius={0.015} smoothness={2} castShadow>
+            <RoundedBox args={[1.66, 0.68, 0.05]} radius={0.02} smoothness={2} castShadow>
               <meshStandardMaterial color={'#3f4248'} metalness={0.7} roughness={0.42} />
             </RoundedBox>
-            <mesh position={[0, 0, 0.05]} castShadow>
-              <boxGeometry args={[0.72, 0.055, 0.06]} />
+            <mesh position={[0, 0.13, 0.05]} castShadow>
+              <boxGeometry args={[0.8, 0.06, 0.06]} />
               {mSteel}
             </mesh>
-            {/* drawer label plate */}
-            <mesh position={[-0.6, 0, 0.03]}>
-              <boxGeometry args={[0.2, 0.1, 0.01]} />
-              <meshStandardMaterial color={'#c9c2a8'} roughness={0.6} />
+            {/* label plate */}
+            <mesh position={[-0.6, -0.14, 0.03]}>
+              <boxGeometry args={[0.24, 0.1, 0.01]} />
+              <meshStandardMaterial color={i === 1 ? '#b0432e' : '#c9c2a8'} roughness={0.6} />
             </mesh>
           </group>
         ))}
@@ -151,8 +147,12 @@ const rgbMat = (
   <meshStandardMaterial color={'#9ffff0'} emissive={TEAL_RGB} emissiveIntensity={2.4} toneMapped={false} />
 )
 
-/** A case fan: dark square housing, an RGB ring, a hub and blades. Faces +Z. */
-function PcFan({ position, r, rotation = [0, 0, 0] }: { position: [number, number, number]; r: number; rotation?: [number, number, number] }) {
+/** A case fan: dark square housing, an RGB ring, a hub and spinning blades. Faces +Z. */
+function PcFan({ position, r, rotation = [0, 0, 0], spin = 7 }: { position: [number, number, number]; r: number; rotation?: [number, number, number]; spin?: number }) {
+  const blades = useRef<THREE.Group>(null)
+  useFrame((_, dt) => {
+    if (blades.current) blades.current.rotation.z += dt * spin
+  })
   return (
     <group position={position} rotation={rotation as unknown as THREE.Euler}>
       <RoundedBox args={[r * 2.1, r * 2.1, 0.06]} radius={0.03} smoothness={2}>
@@ -162,16 +162,117 @@ function PcFan({ position, r, rotation = [0, 0, 0] }: { position: [number, numbe
         <torusGeometry args={[r * 0.9, 0.022, 10, 30]} />
         {rgbMat}
       </mesh>
-      <mesh position={[0, 0, 0.03]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[r * 0.3, r * 0.3, 0.06, 16]} />
-        <meshStandardMaterial color={'#0a0a0c'} metalness={0.2} roughness={0.5} />
+      <group ref={blades} position={[0, 0, 0.03]}>
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[r * 0.3, r * 0.3, 0.06, 16]} />
+          <meshStandardMaterial color={'#0a0a0c'} metalness={0.2} roughness={0.5} />
+        </mesh>
+        {Array.from({ length: 7 }).map((_, i) => (
+          <mesh key={i} rotation={[0.35, 0, (i / 7) * Math.PI * 2]}>
+            <boxGeometry args={[r * 1.5, 0.02, 0.05]} />
+            <meshStandardMaterial color={'#1b1c20'} metalness={0.1} roughness={0.6} />
+          </mesh>
+        ))}
+      </group>
+    </group>
+  )
+}
+
+/** A glowing arc-reactor display on a stand — the "cool" Iron-Man-garage piece. */
+function ArcReactor({ position }: { position: [number, number, number] }) {
+  const rings = useRef<THREE.Group>(null)
+  const core = useRef<THREE.Mesh>(null)
+  useFrame(({ clock }, dt) => {
+    if (rings.current) rings.current.rotation.z += dt * 0.6
+    if (core.current) {
+      const m = core.current.material as THREE.MeshStandardMaterial
+      m.emissiveIntensity = 5 + Math.sin(clock.elapsedTime * 2.5) * 1.5
+    }
+  })
+  const glow = <meshStandardMaterial color={'#bffff5'} emissive={'#2fe6d0'} emissiveIntensity={3} toneMapped={false} />
+  return (
+    <group position={position} rotation={[0.18, 0.5, 0]}>
+      {/* stand base + neck */}
+      <mesh position={[0, -0.42, 0]} castShadow><cylinderGeometry args={[0.16, 0.2, 0.08, 20]} /><meshStandardMaterial color={'#20222a'} metalness={0.6} roughness={0.4} /></mesh>
+      <mesh position={[0, -0.24, -0.05]} rotation={[0.4, 0, 0]} castShadow><cylinderGeometry args={[0.04, 0.04, 0.36, 10]} /><meshStandardMaterial color={'#2a2d33'} metalness={0.7} roughness={0.4} /></mesh>
+      {/* dark housing ring + copper coils */}
+      <mesh castShadow><torusGeometry args={[0.34, 0.07, 14, 36]} /><meshStandardMaterial color={'#26282e'} metalness={0.7} roughness={0.4} /></mesh>
+      {Array.from({ length: 14 }).map((_, i) => {
+        const a = (i / 14) * Math.PI * 2
+        return (
+          <mesh key={i} position={[Math.cos(a) * 0.34, Math.sin(a) * 0.34, 0]} rotation={[Math.PI / 2, 0, a]} castShadow>
+            <cylinderGeometry args={[0.03, 0.03, 0.11, 8]} />
+            <meshStandardMaterial color={'#b5763a'} metalness={0.9} roughness={0.35} />
+          </mesh>
+        )
+      })}
+      {/* glowing concentric rings (slow spin) */}
+      <group ref={rings}>
+        <mesh><torusGeometry args={[0.22, 0.025, 10, 32]} />{glow}</mesh>
+        <mesh><torusGeometry args={[0.14, 0.02, 10, 28]} />{glow}</mesh>
+        {Array.from({ length: 8 }).map((_, i) => {
+          const a = (i / 8) * Math.PI * 2
+          return <mesh key={i} position={[Math.cos(a) * 0.18, Math.sin(a) * 0.18, 0]}><boxGeometry args={[0.03, 0.03, 0.03]} />{glow}</mesh>
+        })}
+      </group>
+      {/* bright pulsing core */}
+      <mesh ref={core} position={[0, 0, 0.02]}><sphereGeometry args={[0.09, 16, 16]} /><meshStandardMaterial color={'#ccfff8'} emissive={'#3fe6d0'} emissiveIntensity={5} toneMapped={false} /></mesh>
+      <pointLight position={[0, 0, 0.3]} intensity={1.2} distance={3.5} decay={2} color={'#2fe6d0'} />
+    </group>
+  )
+}
+
+/** A basketball — orange, pebbled, with black seam lines. */
+function Basketball({ position }: { position: [number, number, number] }) {
+  return (
+    <group position={position}>
+      <mesh castShadow receiveShadow>
+        <sphereGeometry args={[0.34, 32, 24]} />
+        <meshStandardMaterial color={'#c1571c'} roughness={0.8} metalness={0} />
       </mesh>
-      {Array.from({ length: 7 }).map((_, i) => (
-        <mesh key={i} position={[0, 0, 0.03]} rotation={[0, 0, (i / 7) * Math.PI * 2]}>
-          <boxGeometry args={[r * 1.5, 0.02, 0.03]} />
-          <meshStandardMaterial color={'#17181b'} metalness={0.1} roughness={0.6} />
+      {[[0, 0, 0], [0, Math.PI / 2, 0], [Math.PI / 2, 0, 0], [Math.PI / 2, 0, Math.PI / 4]].map((r, i) => (
+        <mesh key={i} rotation={r as unknown as THREE.Euler}>
+          <torusGeometry args={[0.342, 0.007, 8, 48]} />
+          <meshStandardMaterial color={'#161310'} roughness={0.7} />
         </mesh>
       ))}
+    </group>
+  )
+}
+
+/** A low-top Nike-Dunk-style sneaker (white sole, two-tone upper, swoosh). */
+function Sneaker({ position, rotation = [0, 0, 0], base = '#e7e3d8', accent = '#2f6f4a' }: { position: [number, number, number]; rotation?: [number, number, number]; base?: string; accent?: string }) {
+  const white = <meshStandardMaterial color={'#f2efe8'} roughness={0.6} />
+  return (
+    <group position={position} rotation={rotation as unknown as THREE.Euler}>
+      {/* white cupsole */}
+      <RoundedBox args={[0.14, 0.06, 0.36]} radius={0.03} smoothness={3} position={[0, 0.03, 0]} castShadow receiveShadow>{white}</RoundedBox>
+      {/* toe upturn */}
+      <RoundedBox args={[0.14, 0.06, 0.12]} radius={0.03} smoothness={3} position={[0, 0.06, 0.15]} rotation={[0.28, 0, 0]} castShadow>{white}</RoundedBox>
+      {/* upper base */}
+      <RoundedBox args={[0.13, 0.12, 0.26]} radius={0.05} smoothness={3} position={[0, 0.13, -0.02]} castShadow>
+        <meshStandardMaterial color={base} roughness={0.55} />
+      </RoundedBox>
+      {/* toe cap + heel (accent color-block) */}
+      <RoundedBox args={[0.132, 0.1, 0.11]} radius={0.05} smoothness={3} position={[0, 0.1, 0.13]} castShadow>
+        <meshStandardMaterial color={accent} roughness={0.55} />
+      </RoundedBox>
+      <RoundedBox args={[0.132, 0.14, 0.1]} radius={0.045} smoothness={3} position={[0, 0.14, -0.15]} castShadow>
+        <meshStandardMaterial color={accent} roughness={0.55} />
+      </RoundedBox>
+      {/* ankle collar opening */}
+      <mesh position={[0, 0.2, -0.07]} rotation={[0.35, 0, 0]}>
+        <cylinderGeometry args={[0.055, 0.055, 0.03, 18]} />
+        <meshStandardMaterial color={'#141210'} roughness={0.7} />
+      </mesh>
+      {/* tongue + laces */}
+      <RoundedBox args={[0.09, 0.03, 0.09]} radius={0.02} position={[0, 0.18, 0.02]}>{white}</RoundedBox>
+      {[0.05, 0.01, -0.03].map((z) => (
+        <mesh key={z} position={[0, 0.185, z]}><boxGeometry args={[0.1, 0.014, 0.014]} /><meshStandardMaterial color={'#e8e4d8'} roughness={0.5} /></mesh>
+      ))}
+      {/* swoosh (two segments forming a check) on the outer side */}
+      <mesh position={[0.068, 0.11, 0.0]} rotation={[0, 0, 0.15]}><boxGeometry args={[0.008, 0.03, 0.2]} /><meshStandardMaterial color={'#141210'} roughness={0.5} /></mesh>
+      <mesh position={[0.068, 0.15, 0.11]} rotation={[0, 0, -0.5]}><boxGeometry args={[0.008, 0.03, 0.07]} /><meshStandardMaterial color={'#141210'} roughness={0.5} /></mesh>
     </group>
   )
 }
@@ -464,12 +565,44 @@ function tube(pts: [number, number, number][], r: number, color: string, key?: s
   )
 }
 
+/** A breadboard top: cream base, red/blue power rails, and a real hole grid. */
+function makeBreadboardTex() {
+  const c = document.createElement('canvas')
+  c.width = 256
+  c.height = 180
+  const ctx = c.getContext('2d')!
+  ctx.fillStyle = '#e9e6dc'
+  ctx.fillRect(0, 0, 256, 180)
+  // power rails
+  ctx.strokeStyle = '#c0392b'
+  ctx.lineWidth = 2
+  ctx.beginPath(); ctx.moveTo(10, 16); ctx.lineTo(246, 16); ctx.stroke()
+  ctx.beginPath(); ctx.moveTo(10, 164); ctx.lineTo(246, 164); ctx.stroke()
+  ctx.strokeStyle = '#2c5aa0'
+  ctx.beginPath(); ctx.moveTo(10, 26); ctx.lineTo(246, 26); ctx.stroke()
+  ctx.beginPath(); ctx.moveTo(10, 154); ctx.lineTo(246, 154); ctx.stroke()
+  // center channel
+  ctx.fillStyle = '#cfccc2'
+  ctx.fillRect(0, 86, 256, 8)
+  // hole grid
+  ctx.fillStyle = '#1c1c1c'
+  for (let x = 16; x < 246; x += 10) {
+    for (const y of [8, 20, 40, 50, 60, 70, 80, 100, 110, 120, 130, 140, 160, 172]) {
+      ctx.fillRect(x, y, 2.4, 2.4)
+    }
+  }
+  const t = new THREE.CanvasTexture(c)
+  t.colorSpace = THREE.SRGBColorSpace
+  return t
+}
+
 function BenchClutter() {
   const screws = useMemo(() => Array.from({ length: 24 }, () => [(Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * 0.4] as [number, number]), [])
+  const bbTex = useMemo(makeBreadboardTex, [])
   return (
     <group position={[0, DESK_Y, 0]}>
       {/* a real dev board the arm is working over */}
-      <group position={[0.5, 0.02, 0.6]} rotation={[0, 0.3, 0]}>
+      <group position={[0.85, 0.02, 0.55]} rotation={[0, 0.3, 0]}>
         <RoundedBox args={[0.82, 0.03, 0.56]} radius={0.01} smoothness={2} castShadow receiveShadow>
           <meshStandardMaterial color={'#0f4a2c'} metalness={0.25} roughness={0.5} />
         </RoundedBox>
@@ -570,6 +703,55 @@ function BenchClutter() {
             <meshStandardMaterial color={'#6a6a70'} metalness={0.8} roughness={0.3} />
           </mesh>
         </group>
+      </group>
+
+      {/* real robotics parts by the monitors (far left) */}
+      <group position={[-3.5, 0.02, 0.5]}>
+        {/* --- an Arduino-style board --- */}
+        <group position={[-0.15, 0, 0.05]} rotation={[0, 0.35, 0]}>
+          <RoundedBox args={[0.42, 0.028, 0.3]} radius={0.008} smoothness={2} castShadow>
+            <meshStandardMaterial color={'#146a8a'} metalness={0.3} roughness={0.5} />
+          </RoundedBox>
+          {/* USB-B jack (silver) */}
+          <mesh position={[-0.19, 0.04, -0.07]} castShadow><boxGeometry args={[0.09, 0.06, 0.1]} /><meshStandardMaterial color={'#b9bcc2'} metalness={0.85} roughness={0.3} /></mesh>
+          {/* barrel power jack (black) */}
+          <mesh position={[-0.19, 0.03, 0.08]} rotation={[0, 0, Math.PI / 2]} castShadow><cylinderGeometry args={[0.035, 0.035, 0.08, 12]} /><meshStandardMaterial color={'#0c0c0e'} roughness={0.5} /></mesh>
+          {/* main MCU chip */}
+          <mesh position={[0.06, 0.035, 0.02]} castShadow><boxGeometry args={[0.14, 0.03, 0.05]} /><meshStandardMaterial color={'#111' } metalness={0.3} roughness={0.5} /></mesh>
+          {/* black female header strips along both long edges */}
+          {[-0.12, 0.12].map((z) => (
+            <mesh key={z} position={[0.02, 0.035, z]} castShadow><boxGeometry args={[0.32, 0.03, 0.03]} /><meshStandardMaterial color={'#0e0e10'} roughness={0.6} /></mesh>
+          ))}
+          {/* electrolytic cap + crystal + reset button */}
+          <mesh position={[-0.05, 0.05, -0.05]} castShadow><cylinderGeometry args={[0.03, 0.03, 0.06, 12]} /><meshStandardMaterial color={'#20304a'} metalness={0.3} roughness={0.4} /></mesh>
+          <mesh position={[0.16, 0.04, -0.03]} castShadow><boxGeometry args={[0.05, 0.025, 0.03]} /><meshStandardMaterial color={'#9a9da3'} metalness={0.7} roughness={0.4} /></mesh>
+          {/* two SMD LEDs */}
+          <mesh position={[0.17, 0.03, 0.06]}><boxGeometry args={[0.02, 0.012, 0.015]} /><meshStandardMaterial color={'#7fffa0'} emissive={'#2fbf4a'} emissiveIntensity={2} toneMapped={false} /></mesh>
+        </group>
+
+        {/* --- a breadboard with a real hole grid + rails --- */}
+        <group position={[0.35, 0, -0.02]} rotation={[0, -0.2, 0]}>
+          <RoundedBox args={[0.5, 0.05, 0.34]} radius={0.01} smoothness={2} castShadow receiveShadow>
+            <meshStandardMaterial color={'#eae7dd'} roughness={0.6} />
+          </RoundedBox>
+          <mesh position={[0, 0.028, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[0.5, 0.34]} />
+            <meshStandardMaterial map={bbTex} roughness={0.6} />
+          </mesh>
+        </group>
+
+        {/* --- a small gearmotor with shaft + terminals --- */}
+        <group position={[0.15, 0.02, 0.34]} rotation={[Math.PI / 2, 0, 0.5]}>
+          <mesh castShadow><cylinderGeometry args={[0.09, 0.09, 0.22, 20]} /><meshStandardMaterial color={'#8a8d92'} metalness={0.8} roughness={0.35} /></mesh>
+          <mesh position={[0, 0.14, 0]} castShadow><boxGeometry args={[0.16, 0.06, 0.16]} /><meshStandardMaterial color={'#c9a24a'} metalness={0.7} roughness={0.4} /></mesh>
+          <mesh position={[0, 0.2, 0]} castShadow><cylinderGeometry args={[0.02, 0.02, 0.1, 10]} /><meshStandardMaterial color={'#5a5d63'} metalness={0.9} roughness={0.3} /></mesh>
+          <mesh position={[0, -0.13, 0.03]}><boxGeometry args={[0.06, 0.03, 0.02]} /><meshStandardMaterial color={'#b0432e'} roughness={0.5} /></mesh>
+        </group>
+
+        {/* --- jumper wires bridging the board + breadboard --- */}
+        {tube([[0.0, 0.05, 0.02], [0.1, 0.12, -0.1], [0.22, 0.06, -0.02]], 0.012, '#c0392b', 'jw1')}
+        {tube([[0.02, 0.05, 0.08], [0.14, 0.1, 0.05], [0.24, 0.06, 0.06]], 0.012, '#2c5aa0', 'jw2')}
+        {tube([[-0.02, 0.05, -0.04], [0.1, 0.09, -0.16], [0.2, 0.06, -0.12]], 0.012, '#2fae5a', 'jw3')}
       </group>
 
       {/* power strip at the back with cables feeding the gear */}
@@ -897,6 +1079,10 @@ export default function Stage() {
       {/* PC tucked under the desk, under the monitors */}
       <PcTower position={[-2.4, -2, -1.2]} rotation={[0, 0.5, 0]} />
       <ToolChest position={[-5.6, -2, -2.2]} />
+      {/* under the table beside the drawers: a basketball + a pair of Nike Dunks */}
+      <Basketball position={[1.7, -1.66, -0.3]} />
+      <Sneaker position={[0.55, -2, 0.35]} rotation={[0, 0.7, 0]} base={'#e7e3d8'} accent={'#c23a3a'} />
+      <Sneaker position={[0.9, -2, 0.15]} rotation={[0, 1.0, 0]} base={'#e7e3d8'} accent={'#c23a3a'} />
 
       <EffectComposer>
         <Bloom luminanceThreshold={0.6} luminanceSmoothing={0.2} intensity={0.7} mipmapBlur />

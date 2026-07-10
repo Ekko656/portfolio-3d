@@ -1,3 +1,5 @@
+import { useRef } from 'react'
+import { useFrame } from '@react-three/fiber'
 import { RoundedBox } from '@react-three/drei'
 import * as THREE from 'three'
 
@@ -32,6 +34,17 @@ function Bar({ args, position, rot }: { args: [number, number, number]; position
 }
 
 export default function Printer3D({ position, rotation = [0, 0, 0], scale = 1 }: { position: [number, number, number]; rotation?: [number, number, number]; scale?: number }) {
+  const head = useRef<THREE.Group>(null)
+  const fan = useRef<THREE.Group>(null)
+  useFrame(({ clock }, dt) => {
+    const t = clock.elapsedTime
+    // the print head glides slowly side-to-side + tiny layer bob, like it's printing
+    if (head.current) {
+      head.current.position.x = 0.1 + Math.sin(t * 0.8) * 0.28
+      head.current.position.y = gz + Math.sin(t * 0.8) * 0.005
+    }
+    if (fan.current) fan.current.rotation.z += dt * 12
+  })
   return (
     <group position={position} rotation={rotation as unknown as THREE.Euler} scale={scale}>
       {/* base square frame */}
@@ -72,18 +85,31 @@ export default function Printer3D({ position, rotation = [0, 0, 0], scale = 1 }:
       <mesh position={[0, yBase + 0.17, 0.06]} rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[0.88, 0.88]} /><meshStandardMaterial color={'#1a2632'} metalness={0.2} roughness={0.18} /></mesh>
       <mesh position={[0.12, yBase + 0.28, 0.02]} castShadow><cylinderGeometry args={[0.11, 0.12, 0.2, 6]} /><meshStandardMaterial color={FIL} roughness={0.6} /></mesh>
 
-      {/* X gantry beam + carriage + finned hotend */}
+      {/* X gantry beam (static) */}
       <Bar args={[W + 0.1, 0.08, 0.1]} position={[0, gz, zBack + 0.14]} />
-      <RoundedBox args={[0.26, 0.3, 0.16]} radius={0.02} position={[0.1, gz, zBack + 0.28]} castShadow>{BLK}</RoundedBox>
-      {[0, 1, 2, 3].map((i) => (
-        <mesh key={i} position={[0.1, gz - 0.2 - i * 0.04, zBack + 0.4]} rotation={[Math.PI / 2, 0, 0]} castShadow>
-          <cylinderGeometry args={[0.07, 0.07, 0.02, 14]} />{STEEL}
-        </mesh>
-      ))}
-      <mesh position={[0.1, gz - 0.42, zBack + 0.4]} castShadow><boxGeometry args={[0.12, 0.1, 0.09]} /><meshStandardMaterial color={'#8a7a5a'} metalness={0.6} roughness={0.4} /></mesh>
-      <mesh position={[0.1, gz - 0.52, zBack + 0.4]} castShadow><cylinderGeometry args={[0.03, 0.012, 0.08, 10]} /><meshStandardMaterial color={'#b58a3a'} metalness={0.9} roughness={0.3} /></mesh>
-      {/* part-cooling fan */}
-      <RoundedBox args={[0.16, 0.16, 0.07]} radius={0.02} position={[0.28, gz - 0.2, zBack + 0.36]} castShadow>{BLK}</RoundedBox>
+      {/* the print head — glides side to side (animated), carries the hotend + a spinning fan */}
+      <group ref={head} position={[0.1, gz, 0]}>
+        <RoundedBox args={[0.26, 0.3, 0.16]} radius={0.02} position={[0, 0, zBack + 0.28]} castShadow>{BLK}</RoundedBox>
+        {[0, 1, 2, 3].map((i) => (
+          <mesh key={i} position={[0, -0.2 - i * 0.04, zBack + 0.4]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+            <cylinderGeometry args={[0.07, 0.07, 0.02, 14]} />{STEEL}
+          </mesh>
+        ))}
+        <mesh position={[0, -0.42, zBack + 0.4]} castShadow><boxGeometry args={[0.12, 0.1, 0.09]} /><meshStandardMaterial color={'#8a7a5a'} metalness={0.6} roughness={0.4} /></mesh>
+        <mesh position={[0, -0.52, zBack + 0.4]} castShadow><cylinderGeometry args={[0.03, 0.012, 0.08, 10]} /><meshStandardMaterial color={'#b58a3a'} metalness={0.9} roughness={0.3} /></mesh>
+        {/* spinning part-cooling fan */}
+        <group position={[0.18, -0.2, zBack + 0.42]}>
+          <RoundedBox args={[0.16, 0.16, 0.05]} radius={0.02} castShadow>{BLK}</RoundedBox>
+          <group ref={fan} position={[0, 0, 0.03]}>
+            {[0, 1, 2, 3, 4].map((i) => (
+              <mesh key={i} rotation={[0.3, 0, (i / 5) * Math.PI * 2]}>
+                <boxGeometry args={[0.1, 0.015, 0.03]} />
+                <meshStandardMaterial color={'#2a2c30'} metalness={0.2} roughness={0.6} />
+              </mesh>
+            ))}
+          </group>
+        </group>
+      </group>
 
       {/* spool holder arm + filament spool */}
       <Bar args={[0.08, 0.08, 0.6]} position={[0.3, yTop + 0.05, zBack - 0.28]} />
