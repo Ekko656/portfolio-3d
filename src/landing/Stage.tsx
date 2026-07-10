@@ -464,24 +464,66 @@ function BenchClutter() {
   const screws = useMemo(() => Array.from({ length: 24 }, () => [(Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * 0.4] as [number, number]), [])
   return (
     <group position={[0, DESK_Y, 0]}>
-      {/* PCB the arm is working over */}
-      <group position={[0.5, 0.02, 0.55]} rotation={[0, 0.3, 0]}>
-        <mesh castShadow receiveShadow>
-          <boxGeometry args={[0.7, 0.03, 0.5]} />
-          <meshStandardMaterial color={'#123f2a'} metalness={0.3} roughness={0.5} />
+      {/* a real dev board the arm is working over */}
+      <group position={[0.5, 0.02, 0.6]} rotation={[0, 0.3, 0]}>
+        <RoundedBox args={[0.82, 0.03, 0.56]} radius={0.01} smoothness={2} castShadow receiveShadow>
+          <meshStandardMaterial color={'#0f4a2c'} metalness={0.25} roughness={0.5} />
+        </RoundedBox>
+        {/* main microcontroller IC + its legs */}
+        <mesh position={[0.02, 0.05, 0]} castShadow>
+          <boxGeometry args={[0.2, 0.05, 0.2]} />
+          <meshStandardMaterial color={'#0a0a0c'} metalness={0.4} roughness={0.45} />
         </mesh>
-        {[[-0.2, 0.1], [0.15, -0.05], [0.05, 0.15]].map(([x, z], i) => (
-          <mesh key={i} position={[x, 0.05, z]} castShadow>
-            <boxGeometry args={[0.12, 0.05, 0.09]} />
-            <meshStandardMaterial color={'#0c0c0e'} metalness={0.4} roughness={0.5} />
+        <mesh position={[-0.09, 0.055, -0.07]}>
+          <boxGeometry args={[0.02, 0.008, 0.02]} />
+          <meshStandardMaterial color={'#c9b070'} metalness={0.9} roughness={0.3} />
+        </mesh>
+        {/* header pin rows (gold) */}
+        {[-0.36, 0.36].map((z) =>
+          Array.from({ length: 12 }).map((_, i) => (
+            <mesh key={`${z}:${i}`} position={[-0.33 + i * 0.06, 0.06, z]}>
+              <boxGeometry args={[0.014, 0.06, 0.014]} />
+              <meshStandardMaterial color={'#c9b070'} metalness={0.9} roughness={0.28} />
+            </mesh>
+          )),
+        )}
+        {/* USB-C port */}
+        <mesh position={[-0.38, 0.05, 0]} castShadow>
+          <boxGeometry args={[0.09, 0.05, 0.11]} />
+          <meshStandardMaterial color={'#8a8d92'} metalness={0.85} roughness={0.3} />
+        </mesh>
+        {/* electrolytic caps + SMD bits */}
+        {[[-0.15, 0.12, '#2a3a6a'], [0.24, -0.14, '#1a1a20'], [0.3, 0.14, '#6a4a1a']].map(([x, z, c], i) => (
+          <mesh key={`cap${i}`} position={[x as number, 0.07, z as number]} castShadow>
+            <cylinderGeometry args={[0.04, 0.04, 0.1, 12]} />
+            <meshStandardMaterial color={c as string} metalness={0.3} roughness={0.45} />
           </mesh>
         ))}
-        {[[-0.25, -0.12], [0.28, 0.1], [0.0, -0.18]].map(([x, z], i) => (
-          <mesh key={`c${i}`} position={[x, 0.06, z]} castShadow>
-            <cylinderGeometry args={[0.035, 0.035, 0.1, 10]} />
-            <meshStandardMaterial color={'#3a4a6a'} metalness={0.4} roughness={0.4} />
+        {[[-0.24, -0.05], [0.12, 0.2], [-0.02, -0.2]].map(([x, z], i) => (
+          <mesh key={`smd${i}`} position={[x, 0.04, z]}>
+            <boxGeometry args={[0.04, 0.02, 0.02]} />
+            <meshStandardMaterial color={'#c8a05a'} metalness={0.2} roughness={0.6} />
           </mesh>
         ))}
+        {/* two status LEDs */}
+        <mesh position={[0.32, 0.045, -0.05]}><boxGeometry args={[0.02, 0.015, 0.02]} /><meshStandardMaterial color={'#7fffa0'} emissive={'#2fbf4a'} emissiveIntensity={2.5} toneMapped={false} /></mesh>
+        <mesh position={[0.32, 0.045, 0.0]}><boxGeometry args={[0.02, 0.015, 0.02]} /><meshStandardMaterial color={'#ffb0b0'} emissive={'#c93a3a'} emissiveIntensity={1.8} toneMapped={false} /></mesh>
+      </group>
+
+      {/* a servo motor (SO-101 style) + horn + ribbon cable */}
+      <group position={[1.15, 0.02, 0.35]} rotation={[0, 0.6, 0]}>
+        <RoundedBox args={[0.22, 0.3, 0.14]} radius={0.012} smoothness={2} position={[0, 0.15, 0]} castShadow>
+          <meshStandardMaterial color={'#1a1c22'} metalness={0.35} roughness={0.5} />
+        </RoundedBox>
+        {/* mounting tabs */}
+        {[-0.14, 0.14].map((x) => (
+          <mesh key={x} position={[x, 0.24, 0]} castShadow><boxGeometry args={[0.06, 0.03, 0.14]} /><meshStandardMaterial color={'#26282e'} metalness={0.4} roughness={0.5} /></mesh>
+        ))}
+        {/* gearbox top + output horn */}
+        <mesh position={[0, 0.31, 0.03]} castShadow><cylinderGeometry args={[0.06, 0.06, 0.04, 16]} /><meshStandardMaterial color={'#3a3d43'} metalness={0.7} roughness={0.4} /></mesh>
+        <mesh position={[0, 0.34, 0.03]} castShadow><boxGeometry args={[0.16, 0.02, 0.03]} /><meshStandardMaterial color={'#c9ccd2'} metalness={0.5} roughness={0.4} /></mesh>
+        {/* 3-wire cable */}
+        {tube([[0.05, 0.06, -0.06], [0.2, 0.02, -0.2], [0.4, 0.02, -0.1]], 0.016, '#7a2a2a', 'sv')}
       </group>
 
       {/* parts tray with loose screws */}
