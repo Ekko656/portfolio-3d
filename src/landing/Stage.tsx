@@ -76,26 +76,30 @@ function Workbench() {
           {mSteel}
         </mesh>
       ))}
-      {/* lower shelf (steel) */}
-      <mesh position={[0, -1.3, 0]} receiveShadow castShadow>
-        <boxGeometry args={[DESK_W - 0.5, 0.06, DESK_D - 0.4]} />
+      {/* lower shelf (steel) — right side only, leaving the left open for the PC */}
+      <mesh position={[1.8, -1.3, 0]} receiveShadow castShadow>
+        <boxGeometry args={[DESK_W - 4.4, 0.06, DESK_D - 0.4]} />
         {mSteelLt}
       </mesh>
-      {/* drawer bank under the right side */}
-      <group position={[DESK_W / 2 - 1.3, 0, 0]}>
-        <mesh position={[0, DESK_Y - 0.75, 0]} castShadow receiveShadow>
-          <boxGeometry args={[1.7, 1.1, DESK_D - 0.4]} />
+      {/* drawer bank under the right side — cabinet flush to the front */}
+      <group position={[DESK_W / 2 - 1.35, 0, 0.02]}>
+        <mesh position={[0, -0.32, -0.02]} castShadow receiveShadow>
+          <boxGeometry args={[1.72, 1.1, DESK_D - 0.06]} />
           {mSteelLt}
         </mesh>
-        {[-0.35, 0.0, 0.35].map((dy) => (
-          <group key={dy} position={[0, DESK_Y - 0.55 + dy, DESK_D / 2 - 0.02]}>
-            <mesh castShadow>
-              <boxGeometry args={[1.62, 0.32, 0.04]} />
-              <meshStandardMaterial color={'#43464c'} metalness={0.7} roughness={0.4} />
-            </mesh>
+        {[-0.6, -0.24, 0.12].map((dy) => (
+          <group key={dy} position={[0, dy, DESK_D / 2 + 0.02]}>
+            <RoundedBox args={[1.64, 0.34, 0.05]} radius={0.015} smoothness={2} castShadow>
+              <meshStandardMaterial color={'#3f4248'} metalness={0.7} roughness={0.42} />
+            </RoundedBox>
             <mesh position={[0, 0, 0.05]} castShadow>
-              <boxGeometry args={[0.7, 0.05, 0.06]} />
+              <boxGeometry args={[0.72, 0.055, 0.06]} />
               {mSteel}
+            </mesh>
+            {/* drawer label plate */}
+            <mesh position={[-0.6, 0, 0.03]}>
+              <boxGeometry args={[0.2, 0.1, 0.01]} />
+              <meshStandardMaterial color={'#c9c2a8'} roughness={0.6} />
             </mesh>
           </group>
         ))}
@@ -566,10 +570,6 @@ function BenchClutter() {
             <meshStandardMaterial color={'#6a6a70'} metalness={0.8} roughness={0.3} />
           </mesh>
         </group>
-        <mesh position={[0.28, 0.13, 0.02]} rotation={[Math.PI / 2, 0, 0]} castShadow>
-          <torusGeometry args={[0.1, 0.035, 10, 20]} />
-          <meshStandardMaterial color={'#c9c2b0'} metalness={0.6} roughness={0.4} />
-        </mesh>
       </group>
 
       {/* power strip at the back with cables feeding the gear */}
@@ -597,35 +597,114 @@ function BenchClutter() {
   )
 }
 
-/** Background dressing: a wall shelf of bins, a schematic poster, a shop stool. */
+/** A stackable louvered parts bin (angled open front, lip, hang-slot, label). */
+function PartBin({ position, color }: { position: [number, number, number]; color: string }) {
+  return (
+    <group position={position}>
+      {/* body */}
+      <mesh castShadow receiveShadow>
+        <boxGeometry args={[0.6, 0.46, 0.66]} />
+        <meshStandardMaterial color={color} metalness={0.05} roughness={0.7} />
+      </mesh>
+      {/* hollowed dark interior opening at the top-front */}
+      <mesh position={[0, 0.12, 0.16]} rotation={[0.35, 0, 0]}>
+        <boxGeometry args={[0.54, 0.34, 0.02]} />
+        <meshStandardMaterial color={'#0c0c0e'} roughness={0.8} />
+      </mesh>
+      {/* front lip */}
+      <mesh position={[0, -0.16, 0.34]} castShadow>
+        <boxGeometry args={[0.6, 0.14, 0.04]} />
+        <meshStandardMaterial color={color} metalness={0.05} roughness={0.7} />
+      </mesh>
+      {/* recessed label card */}
+      <mesh position={[0, -0.16, 0.37]}>
+        <boxGeometry args={[0.34, 0.1, 0.005]} />
+        <meshStandardMaterial color={'#d8d2c0'} roughness={0.6} />
+      </mesh>
+      {/* stacking ridge on top */}
+      <mesh position={[0, 0.25, -0.1]} castShadow>
+        <boxGeometry args={[0.5, 0.04, 0.4]} />
+        <meshStandardMaterial color={color} metalness={0.05} roughness={0.7} />
+      </mesh>
+    </group>
+  )
+}
+
+/** A glass jar of fasteners with a metal lid. */
+function ScrewJar({ position }: { position: [number, number, number] }) {
+  return (
+    <group position={position}>
+      <mesh castShadow>
+        <cylinderGeometry args={[0.16, 0.16, 0.4, 18]} />
+        <meshStandardMaterial color={'#9fb0b8'} metalness={0.1} roughness={0.1} transparent opacity={0.35} />
+      </mesh>
+      <mesh position={[0, -0.08, 0]}>
+        <cylinderGeometry args={[0.14, 0.14, 0.2, 18]} />
+        <meshStandardMaterial color={'#6a6058'} metalness={0.6} roughness={0.5} />
+      </mesh>
+      <mesh position={[0, 0.22, 0]} castShadow>
+        <cylinderGeometry args={[0.17, 0.17, 0.08, 18]} />
+        <meshStandardMaterial color={'#3a3d43'} metalness={0.8} roughness={0.35} />
+      </mesh>
+    </group>
+  )
+}
+
+/** Background dressing: wall shelves of real parts bins/jars, poster, stool, floor life. */
 function Background() {
-  const binColors = ['#3a4d63', '#7a3b2a', '#3f5a44', '#4a4438', '#2f4a52']
+  const binColors = ['#c9772a', '#3a6a8a', '#3f7a54', '#9a3a3a']
   return (
     <group>
-      {/* narrow wall shelves left of the window (clear of it), on the back wall */}
+      {/* narrow wall shelves left of the window, holding real parts bins + a jar */}
       {[4.5, 3.1].map((sy, si) => (
         <group key={sy} position={[-6.95, sy, -3.24]}>
           <mesh castShadow receiveShadow>
             <boxGeometry args={[1.9, 0.09, 0.72]} />
             <meshStandardMaterial color={'#2a2620'} metalness={0.3} roughness={0.7} />
           </mesh>
-          {[-0.48, 0.48].map((x, i) => (
-            <mesh key={x} position={[x, 0.3, 0]} castShadow receiveShadow>
-              <boxGeometry args={[0.62, 0.48, 0.62]} />
-              <meshStandardMaterial color={binColors[(si * 2 + i) % binColors.length]} metalness={0.1} roughness={0.7} />
-            </mesh>
-          ))}
+          <PartBin position={[-0.55, 0.29, 0]} color={binColors[si * 2]} />
+          {si === 0 ? (
+            <PartBin position={[0.5, 0.29, 0]} color={binColors[si * 2 + 1]} />
+          ) : (
+            <ScrewJar position={[0.5, 0.26, 0.05]} />
+          )}
         </group>
       ))}
       {/* a taped-up schematic / blueprint poster on the back wall */}
-      <mesh position={[6.5, 3.4, -3.34]}>
-        <planeGeometry args={[1.9, 2.5]} />
+      <mesh position={[6.6, 3.6, -3.34]}>
+        <planeGeometry args={[1.8, 2.3]} />
         <meshStandardMaterial color={'#16324a'} emissive={'#0a1a2a'} emissiveIntensity={0.3} roughness={0.9} />
       </mesh>
-      <mesh position={[6.5, 3.4, -3.33]}>
-        <planeGeometry args={[1.7, 2.3]} />
+      <mesh position={[6.6, 3.6, -3.33]}>
+        <planeGeometry args={[1.6, 2.1]} />
         <meshStandardMaterial color={'#1e4a6a'} roughness={0.9} wireframe />
       </mesh>
+      {/* taped photos / sticky notes cluster */}
+      {[[5.2, 4.4, '#c9b56a', -0.1], [5.5, 3.9, '#8a9a6a', 0.08], [5.15, 3.55, '#b57a6a', 0.05]].map(([x, y, c, r], i) => (
+        <mesh key={i} position={[x as number, y as number, -3.33]} rotation={[0, 0, r as number]} castShadow>
+          <planeGeometry args={[0.42, 0.34]} />
+          <meshStandardMaterial color={c as string} roughness={0.8} />
+        </mesh>
+      ))}
+      {/* a round wall clock */}
+      <group position={[6.7, 5.3, -3.32]}>
+        <mesh rotation={[Math.PI / 2, 0, 0]} castShadow>
+          <cylinderGeometry args={[0.42, 0.42, 0.08, 28]} />
+          <meshStandardMaterial color={'#1a1c20'} metalness={0.4} roughness={0.5} />
+        </mesh>
+        <mesh position={[0, 0, 0.05]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.36, 0.36, 0.02, 28]} />
+          <meshStandardMaterial color={'#e8e4dc'} roughness={0.6} />
+        </mesh>
+        <mesh position={[0, 0.12, 0.07]}>
+          <boxGeometry args={[0.02, 0.24, 0.01]} />
+          <meshStandardMaterial color={'#111'} />
+        </mesh>
+        <mesh position={[0.08, 0.02, 0.07]} rotation={[0, 0, -1.0]}>
+          <boxGeometry args={[0.02, 0.18, 0.01]} />
+          <meshStandardMaterial color={'#111'} />
+        </mesh>
+      </group>
       {/* wall conduit + cable runs */}
       {[2.2, 2.5].map((y, i) => (
         <mesh key={y} position={[3.5, y, -3.5 + i * 0.05]} rotation={[0, 0, Math.PI / 2]}>
@@ -815,8 +894,8 @@ export default function Stage() {
         <So101Arm />
       </group>
 
-      {/* floor dressing beside the bench */}
-      <PcTower position={[4.7, -2, -0.3]} rotation={[0, -0.6, 0]} />
+      {/* PC tucked under the desk, under the monitors */}
+      <PcTower position={[-2.4, -2, -1.2]} rotation={[0, 0.5, 0]} />
       <ToolChest position={[-5.6, -2, -2.2]} />
 
       <EffectComposer>

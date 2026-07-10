@@ -67,9 +67,27 @@ const BEHAVIORS: Behavior[] = [
   { name: 'ponder', weight: 1.5, frames: [{ v: PONDER, move: 1.8, hold: 3.2 }] },
 ]
 
-// gentle "breathing" overlay so holds never look frozen (per-joint amp + rate)
-const BREATHE_AMP: Pose = [0.014, 0.02, 0.014, 0.03, 0.018, 0]
+// gentle "breathing" overlay so it never looks frozen (per-joint amp + rate)
+const BREATHE_AMP: Pose = [0.014, 0.02, 0.014, 0.03, 0.018, 0.01]
 const BREATHE_RATE: Pose = [0.7, 0.9, 0.8, 1.15, 0.6, 1]
+
+// ---------------------------------------------------------------------------
+// Continuous organic life: every joint drifts on layered incommensurate sines
+// (smooth, quasi-non-repeating fBm-ish noise). No keyframes, no holds — the arm
+// is always fluidly moving, looking around, breathing. An "energy" envelope ebbs
+// and flows so it sometimes wanders more (curious) and sometimes settles (calm),
+// but never goes fully static.
+// ---------------------------------------------------------------------------
+const fbm = (t: number, seed: number) =>
+  Math.sin(t * 1.0 + seed) * 0.5 +
+  Math.sin(t * 0.47 + seed * 2.3) * 0.28 +
+  Math.sin(t * 2.13 + seed * 4.1) * 0.14 +
+  Math.sin(t * 0.23 + seed * 5.7) * 0.08 // ~[-1, 1]
+
+const ORG_REST: Pose = [0.0, -0.72, -0.66, -0.35, 0, 0.3] // relaxed, alert-ish base
+const ORG_AMP: Pose = [0.78, 0.32, 0.28, 0.62, 0.72, 0.32] // wander range per joint
+const ORG_SPD: Pose = [0.16, 0.13, 0.11, 0.22, 0.29, 0.19] // wander speed per joint
+const ORG_SEED: Pose = [1.1, 3.7, 5.2, 7.9, 2.4, 6.6]
 
 const smootherstep = (x: number) => {
   const t = Math.min(Math.max(x, 0), 1)
@@ -106,6 +124,7 @@ export default function So101Arm() {
   const lastBehavior = useRef('')
   const prevFlash = useRef(0)
   const startleUntil = useRef(0)
+  const startleT = useRef(-99)
 
   // ignition state
   const lastPhase = useRef<IgnitionPhase>('idle')
@@ -225,31 +244,31 @@ export default function So101Arm() {
         }
       }
     } else {
-      // ---- alive behavior scheduler ----
-      // lightning startle: on the rising edge of a flash, flinch, then recover
+      // ---- continuous organic life (no keyframes, never static) ----
+      // lightning startle: rising edge triggers a smooth flinch layered on top
       const flash = weather.flash
       if (flash > 0.45 && prevFlash.current <= 0.45 && t > startleUntil.current) {
-        queue.current = [{ v: REST, move: 1.3, hold: 1.6 }]
-        seg.current = { from: [...lastApplied.current] as Pose, to: STARTLE, move: 0.12, hold: 0.35, start: t }
-        startleUntil.current = t + 2.2 // debounce repeated strikes
+        startleT.current = t
+        startleUntil.current = t + 2.4
       }
       prevFlash.current = flash
 
-      if (!seg.current) nextSeg(REST, t)
-      let s = seg.current!
-      const e = t - s.start
-      if (e <= s.move) {
-        blended = lerpPose(s.from, s.to, smootherstep(e / s.move))
-      } else if (e <= s.move + s.hold) {
-        blended = [...s.to] as Pose
-      } else {
-        nextSeg(s.to, t)
-        s = seg.current!
-        blended = [...s.from] as Pose
-      }
+      // slow "energy" envelope (~0.35..1.0): curious wandering ebbs to calm and
+      // back, never fully still
+      const act = 0.4 + 0.42 * (0.5 + 0.5 * fbm(t * 0.045, 91))
+      blended = JOINT_NAMES.map(
+        (_, i) =>
+          ORG_REST[i] +
+          ORG_AMP[i] * act * fbm(t * ORG_SPD[i], ORG_SEED[i]) +
+          BREATHE_AMP[i] * Math.sin(t * BREATHE_RATE[i] + i * 1.7),
+      ) as Pose
 
-      // breathing overlay so it always feels alive
-      blended = blended.map((v, i) => v + BREATHE_AMP[i] * Math.sin(t * BREATHE_RATE[i] + i * 1.7)) as Pose
+      // startle flinch: fast attack, eased release, blended over the organic pose
+      const st = t - startleT.current
+      if (st >= 0 && st < 1.7) {
+        const env = st < 0.1 ? st / 0.1 : Math.exp(-(st - 0.1) * 2.4)
+        blended = lerpPose(blended, STARTLE, Math.min(1, env))
+      }
 
       // smooth hand-back after an ignition run ends
       if (resumeFrom.current) {
