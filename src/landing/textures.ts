@@ -186,3 +186,111 @@ export function pegboardTexture(repeat: [number, number] = [4, 2]) {
   }
   return finish(c, repeat)
 }
+
+/** Basketball leather: burnt-orange base with dense pebble mottling. */
+export function basketballTexture() {
+  const { c, ctx } = canvas(512)
+  // burnt-orange base, faint vertical warmth variation
+  const g = ctx.createLinearGradient(0, 0, 0, 512)
+  g.addColorStop(0, '#c9531d')
+  g.addColorStop(0.5, '#d15c22')
+  g.addColorStop(1, '#bd4a18')
+  ctx.fillStyle = g
+  ctx.fillRect(0, 0, 512, 512)
+  // pebble grain: thousands of tiny lighter/darker specks
+  for (let i = 0; i < 24000; i++) {
+    const x = Math.random() * 512
+    const y = Math.random() * 512
+    const lite = Math.random() > 0.5
+    ctx.fillStyle = lite
+      ? `rgba(233,140,80,${0.10 + Math.random() * 0.14})`
+      : `rgba(120,44,12,${0.10 + Math.random() * 0.16})`
+    ctx.beginPath()
+    ctx.arc(x, y, 0.8 + Math.random() * 1.1, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  // broad tonal blotches for a worn, used look
+  for (let i = 0; i < 60; i++) {
+    const x = Math.random() * 512
+    const y = Math.random() * 512
+    const r = 20 + Math.random() * 60
+    const rg = ctx.createRadialGradient(x, y, 0, x, y, r)
+    rg.addColorStop(0, `rgba(150,60,20,${0.05 + Math.random() * 0.05})`)
+    rg.addColorStop(1, 'rgba(150,60,20,0)')
+    ctx.fillStyle = rg
+    ctx.beginPath()
+    ctx.arc(x, y, r, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  const t = new THREE.CanvasTexture(c)
+  t.colorSpace = THREE.SRGBColorSpace
+  t.anisotropy = 4
+  return t
+}
+
+/** Grayscale pebble bump map for the basketball (raised leather grain). */
+export function basketballBump() {
+  const { c, ctx } = canvas(512)
+  ctx.fillStyle = '#7d7d7d'
+  ctx.fillRect(0, 0, 512, 512)
+  for (let i = 0; i < 34000; i++) {
+    const x = Math.random() * 512
+    const y = Math.random() * 512
+    const v = Math.random() > 0.5 ? 235 : 30
+    ctx.fillStyle = `rgba(${v},${v},${v},${0.35 + Math.random() * 0.4})`
+    ctx.beginPath()
+    ctx.arc(x, y, 0.7 + Math.random() * 1.0, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  const t = new THREE.CanvasTexture(c)
+  t.anisotropy = 4
+  return t
+}
+
+/** The top résumé sheet: a real one-page CV layout (header, rule, columns). */
+export function resumeSheetTexture() {
+  const { c, ctx } = canvas(512)
+  // slightly warm off-white paper with faint tint
+  ctx.fillStyle = '#efe9dd'
+  ctx.fillRect(0, 0, 512, 512)
+  // very subtle paper fibre noise
+  for (let i = 0; i < 4000; i++) {
+    ctx.fillStyle = `rgba(0,0,0,${0.015 + Math.random() * 0.02})`
+    ctx.fillRect(Math.random() * 512, Math.random() * 512, 1, 1)
+  }
+  const M = 48 // margin
+  // name header
+  ctx.fillStyle = '#20242b'
+  ctx.font = 'bold 34px Georgia, serif'
+  ctx.fillText('EKAM KOONER', M, M + 26)
+  // contact sub-line
+  ctx.fillStyle = '#5a6068'
+  ctx.font = '13px Helvetica, Arial, sans-serif'
+  ctx.fillText('Biomedical Engineering · Robotics  ·  Vancouver, BC', M, M + 48)
+  // divider rule
+  ctx.strokeStyle = '#b8462a'
+  ctx.lineWidth = 3
+  ctx.beginPath()
+  ctx.moveTo(M, M + 62)
+  ctx.lineTo(512 - M, M + 62)
+  ctx.stroke()
+  // section blocks: a heading (short dark bar) then body text lines (grey)
+  let y = M + 92
+  const sections = [4, 5, 3, 4]
+  for (const rows of sections) {
+    ctx.fillStyle = '#2b3038'
+    ctx.fillRect(M, y, 150, 10)
+    y += 24
+    for (let r = 0; r < rows; r++) {
+      ctx.fillStyle = 'rgba(70,76,84,0.72)'
+      const w = 512 - 2 * M - Math.random() * 90 // ragged right edge
+      ctx.fillRect(M + 14, y, w - 14, 6)
+      y += 16
+    }
+    y += 18
+  }
+  const t = new THREE.CanvasTexture(c)
+  t.colorSpace = THREE.SRGBColorSpace
+  t.anisotropy = 4
+  return t
+}

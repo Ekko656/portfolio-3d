@@ -8,7 +8,7 @@ import Window from './Window'
 import Outdoors from './Outdoors'
 import Workstation from './Workstation'
 import Printer3D from './Printer3D'
-import { concreteTexture, plywoodTexture, pegboardTexture, workbenchTexture, ceilingTexture } from './textures'
+import { concreteTexture, plywoodTexture, pegboardTexture, workbenchTexture, ceilingTexture, basketballTexture, basketballBump, resumeSheetTexture } from './textures'
 
 /**
  * The warm dim home-garage workshop at a rainy dawn. Blockout stage: real
@@ -223,56 +223,126 @@ function ArcReactor({ position }: { position: [number, number, number] }) {
 }
 
 /** A basketball — orange, pebbled, with black seam lines. */
-function Basketball({ position }: { position: [number, number, number] }) {
+const BALL_R = 0.34
+// The real basketball seam layout: one vertical seam straight down the front
+// (a great-circle ring), and the two S-shaped belts that wave up-and-down twice
+// around the ball — NOT a cross or a grid. Built as smooth tubes on the sphere.
+const ballSeamGeos = (() => {
+  const R = BALL_R + 0.001
+  const tube = (fn: (t: number) => THREE.Vector3) => {
+    const pts: THREE.Vector3[] = []
+    for (let i = 0; i < 220; i++) pts.push(fn((i / 220) * Math.PI * 2))
+    const curve = new THREE.CatmullRomCurve3(pts, true, 'catmullrom', 0.5)
+    return new THREE.TubeGeometry(curve, 260, 0.009, 7, true)
+  }
+  // spherical point: az = longitude around Y, lat = angle above the equator
+  const sph = (az: number, lat: number) => {
+    const rr = R * Math.cos(lat)
+    return new THREE.Vector3(rr * Math.cos(az), R * Math.sin(lat), rr * Math.sin(az))
+  }
+  // vertical ring in the XY plane (reads as the straight centre seam + its back)
+  const ringA = tube((t) => new THREE.Vector3(R * Math.cos(t), R * Math.sin(t), 0))
+  const ringB = tube((t) => new THREE.Vector3(0, R * Math.sin(t), R * Math.cos(t)))
+  // two wavy belts, 90° apart — the signature basketball S-curves
+  const belt1 = tube((t) => sph(t, 0.62 * Math.sin(2 * t)))
+  const belt2 = tube((t) => sph(t + Math.PI / 2, 0.62 * Math.sin(2 * t)))
+  return [ringA, ringB, belt1, belt2]
+})()
+
+function Basketball({ position, rotation = [0, 0, 0] }: { position: [number, number, number]; rotation?: [number, number, number] }) {
+  const [map, bump] = useMemo(() => [basketballTexture(), basketballBump()], [])
   return (
-    <group position={position}>
+    <group position={position} rotation={rotation as unknown as THREE.Euler}>
       <mesh castShadow receiveShadow>
-        <sphereGeometry args={[0.34, 32, 24]} />
-        <meshStandardMaterial color={'#c1571c'} roughness={0.8} metalness={0} />
+        <sphereGeometry args={[BALL_R, 64, 48]} />
+        <meshStandardMaterial map={map} bumpMap={bump} bumpScale={0.008} roughness={0.82} metalness={0} />
       </mesh>
-      {[[0, 0, 0], [0, Math.PI / 2, 0], [Math.PI / 2, 0, 0], [Math.PI / 2, 0, Math.PI / 4]].map((r, i) => (
-        <mesh key={i} rotation={r as unknown as THREE.Euler}>
-          <torusGeometry args={[0.342, 0.007, 8, 48]} />
-          <meshStandardMaterial color={'#161310'} roughness={0.7} />
+      {ballSeamGeos.map((g, i) => (
+        <mesh key={i} geometry={g}>
+          <meshStandardMaterial color={'#140d08'} roughness={0.95} metalness={0} />
         </mesh>
       ))}
+      {/* inflation valve nub */}
+      <mesh position={[BALL_R * 0.5, BALL_R * 0.72, BALL_R * 0.46]} rotation={[0.7, 0.6, 0]}>
+        <cylinderGeometry args={[0.015, 0.019, 0.012, 12]} />
+        <meshStandardMaterial color={'#241811'} roughness={0.85} />
+      </mesh>
     </group>
   )
 }
 
-/** A low-top Nike-Dunk-style sneaker (white sole, two-tone upper, swoosh). */
-function Sneaker({ position, rotation = [0, 0, 0], base = '#e7e3d8', accent = '#2f6f4a' }: { position: [number, number, number]; rotation?: [number, number, number]; base?: string; accent?: string }) {
-  const white = <meshStandardMaterial color={'#f2efe8'} roughness={0.6} />
+// A real Nike Swoosh outline (fat rounded tail on the heel side, long thin tip
+// hooking down toward the toe), extruded thin to sit proud of the panel.
+const swooshGeo = (() => {
+  const SL = 0.2, SH = 0.11 // swoosh length / height in shoe-local units (flatter)
+  const P = (x: number, y: number): [number, number] => [x * SL, y * SH]
+  const s = new THREE.Shape()
+  s.moveTo(...P(0.0, 0.42))
+  s.bezierCurveTo(...P(0.06, 0.62), ...P(0.2, 0.7), ...P(0.42, 0.66))
+  s.bezierCurveTo(...P(0.66, 0.61), ...P(0.86, 0.38), ...P(1.0, 0.05))
+  s.lineTo(...P(0.95, 0.0))
+  s.bezierCurveTo(...P(0.66, 0.24), ...P(0.42, 0.32), ...P(0.22, 0.3))
+  s.bezierCurveTo(...P(0.12, 0.28), ...P(0.03, 0.3), ...P(0.0, 0.42))
+  const g = new THREE.ExtrudeGeometry(s, { depth: 0.008, bevelEnabled: true, bevelThickness: 0.003, bevelSize: 0.003, bevelSegments: 2 })
+  g.center()
+  return g
+})()
+
+/** A Nike Dunk Low — simple + recognizable: chunky cupsole, three colour blocks
+ *  (toe / heel accent, base mid), a clear swoosh, a tongue and a few laces. */
+function Sneaker({ position, rotation = [0, 0, 0], base = '#efe9de', accent = '#bd352f' }: { position: [number, number, number]; rotation?: [number, number, number]; base?: string; accent?: string }) {
+  const leather = (c: string) => <meshStandardMaterial color={c} roughness={0.5} metalness={0.02} />
   return (
     <group position={position} rotation={rotation as unknown as THREE.Euler}>
-      {/* white cupsole */}
-      <RoundedBox args={[0.14, 0.06, 0.36]} radius={0.03} smoothness={3} position={[0, 0.03, 0]} castShadow receiveShadow>{white}</RoundedBox>
-      {/* toe upturn */}
-      <RoundedBox args={[0.14, 0.06, 0.12]} radius={0.03} smoothness={3} position={[0, 0.06, 0.15]} rotation={[0.28, 0, 0]} castShadow>{white}</RoundedBox>
-      {/* upper base */}
-      <RoundedBox args={[0.13, 0.12, 0.26]} radius={0.05} smoothness={3} position={[0, 0.13, -0.02]} castShadow>
-        <meshStandardMaterial color={base} roughness={0.55} />
+      {/* sole: dark rubber outsole + white midsole band (thin, taller at heel) */}
+      <RoundedBox args={[0.14, 0.026, 0.4]} radius={0.012} smoothness={4} position={[0, 0.014, 0]} castShadow receiveShadow>
+        <meshStandardMaterial color={'#17130f'} roughness={0.85} />
       </RoundedBox>
-      {/* toe cap + heel (accent color-block) */}
-      <RoundedBox args={[0.132, 0.1, 0.11]} radius={0.05} smoothness={3} position={[0, 0.1, 0.13]} castShadow>
-        <meshStandardMaterial color={accent} roughness={0.55} />
+      <RoundedBox args={[0.144, 0.05, 0.4]} radius={0.024} smoothness={4} position={[0, 0.05, 0]} castShadow>
+        <meshStandardMaterial color={'#f4efe6'} roughness={0.5} />
       </RoundedBox>
-      <RoundedBox args={[0.132, 0.14, 0.1]} radius={0.045} smoothness={3} position={[0, 0.14, -0.15]} castShadow>
-        <meshStandardMaterial color={accent} roughness={0.55} />
+      {/* heel of the midsole sits a touch higher (Dunk wedge) */}
+      <RoundedBox args={[0.144, 0.07, 0.12]} radius={0.024} smoothness={4} position={[0, 0.06, -0.15]} castShadow>
+        <meshStandardMaterial color={'#f4efe6'} roughness={0.5} />
       </RoundedBox>
-      {/* ankle collar opening */}
-      <mesh position={[0, 0.2, -0.07]} rotation={[0.35, 0, 0]}>
-        <cylinderGeometry args={[0.055, 0.055, 0.03, 18]} />
-        <meshStandardMaterial color={'#141210'} roughness={0.7} />
+
+      {/* upper — a wedge volume, higher/rounder at the heel, tapering to the toe */}
+      <RoundedBox args={[0.136, 0.13, 0.28]} radius={0.06} smoothness={5} position={[0, 0.16, -0.05]} castShadow>
+        {leather(base)}
+      </RoundedBox>
+      {/* rounded toe box (accent) that wraps down to the sole at the front */}
+      <RoundedBox args={[0.138, 0.11, 0.16]} radius={0.065} smoothness={5} position={[0, 0.115, 0.14]} rotation={[-0.12, 0, 0]} castShadow>
+        {leather(accent)}
+      </RoundedBox>
+      {/* heel counter (accent), tall and rounded */}
+      <RoundedBox args={[0.138, 0.16, 0.11]} radius={0.055} smoothness={5} position={[0, 0.17, -0.16]} castShadow>
+        {leather(accent)}
+      </RoundedBox>
+      {/* ankle collar padding + dark opening */}
+      <RoundedBox args={[0.128, 0.06, 0.13]} radius={0.03} smoothness={4} position={[0, 0.235, -0.1]} rotation={[0.16, 0, 0]}>
+        {leather(base)}
+      </RoundedBox>
+      <mesh position={[0, 0.225, -0.06]} rotation={[0.45, 0, 0]}>
+        <cylinderGeometry args={[0.05, 0.05, 0.03, 20]} />
+        <meshStandardMaterial color={'#0f0c0a'} roughness={0.85} />
       </mesh>
-      {/* tongue + laces */}
-      <RoundedBox args={[0.09, 0.03, 0.09]} radius={0.02} position={[0, 0.18, 0.02]}>{white}</RoundedBox>
-      {[0.05, 0.01, -0.03].map((z) => (
-        <mesh key={z} position={[0, 0.185, z]}><boxGeometry args={[0.1, 0.014, 0.014]} /><meshStandardMaterial color={'#e8e4d8'} roughness={0.5} /></mesh>
+      {/* tongue at the throat */}
+      <RoundedBox args={[0.086, 0.045, 0.1]} radius={0.02} smoothness={3} position={[0, 0.205, 0.04]} rotation={[0.3, 0, 0]}>
+        {leather('#f3eee4')}
+      </RoundedBox>
+      {/* three laces across the throat */}
+      {[0.06, 0.015, -0.03].map((z) => (
+        <mesh key={z} position={[0, 0.2, z]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.007, 0.007, 0.094, 8]} />
+          <meshStandardMaterial color={accent} roughness={0.55} />
+        </mesh>
       ))}
-      {/* swoosh (two segments forming a check) on the outer side */}
-      <mesh position={[0.068, 0.11, 0.0]} rotation={[0, 0, 0.15]}><boxGeometry args={[0.008, 0.03, 0.2]} /><meshStandardMaterial color={'#141210'} roughness={0.5} /></mesh>
-      <mesh position={[0.068, 0.15, 0.11]} rotation={[0, 0, -0.5]}><boxGeometry args={[0.008, 0.03, 0.07]} /><meshStandardMaterial color={'#141210'} roughness={0.5} /></mesh>
+      {/* the Swoosh on both sides — tip toward the toe on both (mirrored) */}
+      {[-1, 1].map((sx) => (
+        <mesh key={sx} geometry={swooshGeo} position={[sx * 0.071, 0.115, -0.02]} rotation={[0, -Math.PI / 2, 0]} castShadow>
+          {leather(accent)}
+        </mesh>
+      ))}
     </group>
   )
 }
@@ -364,6 +434,71 @@ function PcTower({ position, rotation = [0, 0, 0] }: { position: [number, number
   )
 }
 
+/** A lived-in stack of papers with the résumé on top — a binder clip + pen. */
+function PaperStack({ position, rotation = [0, 0, 0] }: { position: [number, number, number]; rotation?: [number, number, number] }) {
+  const resume = useMemo(() => resumeSheetTexture(), [])
+  const W = 0.42, D = 0.55, T = 0.006
+  // a loose stack: each sheet nudged + fanned a little so it reads as paper, not a box
+  const sheets = [
+    { dx: 0.012, dz: -0.01, ry: -0.06, tone: '#e4ddcd' },
+    { dx: -0.014, dz: 0.008, ry: 0.05, tone: '#eae3d4' },
+    { dx: 0.006, dz: 0.014, ry: -0.02, tone: '#e7e0d0' },
+    { dx: -0.006, dz: -0.006, ry: 0.08, tone: '#ece6d8' },
+    { dx: 0.0, dz: 0.0, ry: 0.02, tone: '#efe9dc' },
+  ]
+  return (
+    <group position={position} rotation={rotation as unknown as THREE.Euler}>
+      {/* the understack */}
+      {sheets.map((s, i) => (
+        <mesh key={i} position={[s.dx, i * T, s.dz]} rotation={[0, s.ry, 0]} castShadow receiveShadow>
+          <boxGeometry args={[W, T, D]} />
+          <meshStandardMaterial color={s.tone} roughness={0.85} />
+        </mesh>
+      ))}
+      {/* the résumé, face up on top, slightly askew */}
+      <mesh position={[0.008, sheets.length * T + 0.001, 0.006]} rotation={[0, -0.04, 0]} castShadow receiveShadow>
+        <boxGeometry args={[W, T, D]} />
+        <meshStandardMaterial color={'#efe9dd'} roughness={0.82} />
+        {/* top face texture via a thin plane just above, so only the top shows the CV */}
+      </mesh>
+      <mesh position={[0.008, sheets.length * T + 0.0055, 0.006]} rotation={[-Math.PI / 2, 0, -0.04]}>
+        <planeGeometry args={[W, D]} />
+        <meshStandardMaterial map={resume} roughness={0.85} />
+      </mesh>
+      {/* black bulldog binder clip near the top edge */}
+      <group position={[0.008, sheets.length * T + 0.012, -0.2]}>
+        <mesh castShadow>
+          <boxGeometry args={[0.09, 0.02, 0.05]} />
+          <meshStandardMaterial color={'#17181b'} metalness={0.5} roughness={0.45} />
+        </mesh>
+        {[-1, 1].map((sx) => (
+          <mesh key={sx} position={[sx * 0.045, 0.02, 0]} rotation={[0, 0, sx * 0.5]}>
+            <cylinderGeometry args={[0.003, 0.003, 0.05, 8]} />
+            <meshStandardMaterial color={'#c9ccd2'} metalness={0.9} roughness={0.25} />
+          </mesh>
+        ))}
+      </group>
+      {/* a pen laid diagonally across the stack */}
+      <group position={[-0.04, sheets.length * T + 0.012, 0.05]} rotation={[0, 0.7, 0]}>
+        <mesh rotation={[0, 0, Math.PI / 2]} castShadow>
+          <cylinderGeometry args={[0.008, 0.008, 0.34, 12]} />
+          <meshStandardMaterial color={'#1b1c20'} roughness={0.4} metalness={0.2} />
+        </mesh>
+        <mesh position={[0.18, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+          <coneGeometry args={[0.008, 0.05, 12]} />
+          <meshStandardMaterial color={'#2a2c31'} roughness={0.4} />
+        </mesh>
+        <mesh position={[-0.16, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.006, 0.006, 0.03, 8]} />
+          <meshStandardMaterial color={accentSilver} metalness={0.85} roughness={0.3} />
+        </mesh>
+      </group>
+    </group>
+  )
+}
+
+const accentSilver = '#b9bcc2'
+
 /** A red rolling tool chest — a classic garage anchor. */
 function ToolChest({ position }: { position: [number, number, number] }) {
   const RED = '#7a1f1f'
@@ -390,6 +525,8 @@ function ToolChest({ position }: { position: [number, number, number] }) {
           </mesh>
         </group>
       ))}
+      {/* résumé + papers left out on top of the chest */}
+      <PaperStack position={[0.08, 2.705, 0.02]} rotation={[0, 0.22, 0]} />
       {/* casters */}
       {[[-0.7, -0.35], [0.7, -0.35], [-0.7, 0.35], [0.7, 0.35]].map(([x, z], i) => (
         <mesh key={i} position={[x, 0.12, z]} rotation={[Math.PI / 2, 0, 0]} castShadow>
@@ -1080,9 +1217,10 @@ export default function Stage() {
       <PcTower position={[-2.4, -2, -1.2]} rotation={[0, 0.5, 0]} />
       <ToolChest position={[-5.6, -2, -2.2]} />
       {/* under the table beside the drawers: a basketball + a pair of Nike Dunks */}
-      <Basketball position={[1.7, -1.66, -0.3]} />
-      <Sneaker position={[0.55, -2, 0.35]} rotation={[0, 0.7, 0]} base={'#e7e3d8'} accent={'#c23a3a'} />
-      <Sneaker position={[0.9, -2, 0.15]} rotation={[0, 1.0, 0]} base={'#e7e3d8'} accent={'#c23a3a'} />
+      <Basketball position={[1.35, -1.66, -1.35]} rotation={[0.3, 0.6, 0.1]} />
+      {/* a pair of Nike Dunks kicked off under the bench, beside the ball */}
+      <Sneaker position={[0.2, -2, -1.15]} rotation={[0, 0.9, 0]} />
+      <Sneaker position={[0.52, -2, -1.42]} rotation={[0, 1.7, 0.06]} />
 
       <EffectComposer>
         <Bloom luminanceThreshold={0.6} luminanceSmoothing={0.2} intensity={0.7} mipmapBlur />
