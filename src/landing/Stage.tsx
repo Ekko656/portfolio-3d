@@ -1,6 +1,6 @@
-import { useMemo, useRef } from 'react'
+import { Suspense, useMemo, useRef } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
-import { Environment, Lightformer, RoundedBox } from '@react-three/drei'
+import { Environment, Lightformer, RoundedBox, useGLTF } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
 import So101Arm from '../components/arm/So101Arm'
@@ -8,7 +8,7 @@ import Window from './Window'
 import Outdoors from './Outdoors'
 import Workstation from './Workstation'
 import Printer3D from './Printer3D'
-import { concreteTexture, plywoodTexture, pegboardTexture, workbenchTexture, ceilingTexture, basketballTexture, basketballBump, resumeSheetTexture } from './textures'
+import { concreteTexture, plywoodTexture, pegboardTexture, workbenchTexture, ceilingTexture, resumeSheetTexture } from './textures'
 
 /**
  * The warm dim home-garage workshop at a rainy dawn. Blockout stage: real
@@ -223,129 +223,36 @@ function ArcReactor({ position }: { position: [number, number, number] }) {
 }
 
 /** A basketball — orange, pebbled, with black seam lines. */
-const BALL_R = 0.34
-// The real basketball seam layout: one vertical seam straight down the front
-// (a great-circle ring), and the two S-shaped belts that wave up-and-down twice
-// around the ball — NOT a cross or a grid. Built as smooth tubes on the sphere.
-const ballSeamGeos = (() => {
-  const R = BALL_R + 0.001
-  const tube = (fn: (t: number) => THREE.Vector3) => {
-    const pts: THREE.Vector3[] = []
-    for (let i = 0; i < 220; i++) pts.push(fn((i / 220) * Math.PI * 2))
-    const curve = new THREE.CatmullRomCurve3(pts, true, 'catmullrom', 0.5)
-    return new THREE.TubeGeometry(curve, 260, 0.009, 7, true)
-  }
-  // spherical point: az = longitude around Y, lat = angle above the equator
-  const sph = (az: number, lat: number) => {
-    const rr = R * Math.cos(lat)
-    return new THREE.Vector3(rr * Math.cos(az), R * Math.sin(lat), rr * Math.sin(az))
-  }
-  // vertical ring in the XY plane (reads as the straight centre seam + its back)
-  const ringA = tube((t) => new THREE.Vector3(R * Math.cos(t), R * Math.sin(t), 0))
-  const ringB = tube((t) => new THREE.Vector3(0, R * Math.sin(t), R * Math.cos(t)))
-  // two wavy belts, 90° apart — the signature basketball S-curves
-  const belt1 = tube((t) => sph(t, 0.62 * Math.sin(2 * t)))
-  const belt2 = tube((t) => sph(t + Math.PI / 2, 0.62 * Math.sin(2 * t)))
-  return [ringA, ringB, belt1, belt2]
-})()
+// Shared helper: load a GLB, clone it per instance, and enable shadows.
+function useModel(url: string) {
+  const { scene } = useGLTF(url)
+  return useMemo(() => {
+    const obj = scene.clone(true)
+    obj.traverse((o) => {
+      const m = o as THREE.Mesh
+      if (m.isMesh) {
+        m.castShadow = true
+        m.receiveShadow = true
+      }
+    })
+    return obj
+  }, [scene])
+}
 
+/** The basketball, built + seamed in Blender (public/models/basketball.glb). */
 function Basketball({ position, rotation = [0, 0, 0] }: { position: [number, number, number]; rotation?: [number, number, number] }) {
-  const [map, bump] = useMemo(() => [basketballTexture(), basketballBump()], [])
-  return (
-    <group position={position} rotation={rotation as unknown as THREE.Euler}>
-      <mesh castShadow receiveShadow>
-        <sphereGeometry args={[BALL_R, 64, 48]} />
-        <meshStandardMaterial map={map} bumpMap={bump} bumpScale={0.008} roughness={0.82} metalness={0} />
-      </mesh>
-      {ballSeamGeos.map((g, i) => (
-        <mesh key={i} geometry={g}>
-          <meshStandardMaterial color={'#140d08'} roughness={0.95} metalness={0} />
-        </mesh>
-      ))}
-      {/* inflation valve nub */}
-      <mesh position={[BALL_R * 0.5, BALL_R * 0.72, BALL_R * 0.46]} rotation={[0.7, 0.6, 0]}>
-        <cylinderGeometry args={[0.015, 0.019, 0.012, 12]} />
-        <meshStandardMaterial color={'#241811'} roughness={0.85} />
-      </mesh>
-    </group>
-  )
+  const obj = useModel('/models/basketball.glb')
+  return <primitive object={obj} position={position} rotation={rotation as unknown as THREE.Euler} scale={0.34} />
 }
+useGLTF.preload('/models/basketball.glb')
 
-// A real Nike Swoosh outline (fat rounded tail on the heel side, long thin tip
-// hooking down toward the toe), extruded thin to sit proud of the panel.
-const swooshGeo = (() => {
-  const SL = 0.2, SH = 0.11 // swoosh length / height in shoe-local units (flatter)
-  const P = (x: number, y: number): [number, number] => [x * SL, y * SH]
-  const s = new THREE.Shape()
-  s.moveTo(...P(0.0, 0.42))
-  s.bezierCurveTo(...P(0.06, 0.62), ...P(0.2, 0.7), ...P(0.42, 0.66))
-  s.bezierCurveTo(...P(0.66, 0.61), ...P(0.86, 0.38), ...P(1.0, 0.05))
-  s.lineTo(...P(0.95, 0.0))
-  s.bezierCurveTo(...P(0.66, 0.24), ...P(0.42, 0.32), ...P(0.22, 0.3))
-  s.bezierCurveTo(...P(0.12, 0.28), ...P(0.03, 0.3), ...P(0.0, 0.42))
-  const g = new THREE.ExtrudeGeometry(s, { depth: 0.008, bevelEnabled: true, bevelThickness: 0.003, bevelSize: 0.003, bevelSegments: 2 })
-  g.center()
-  return g
-})()
-
-/** A Nike Dunk Low — simple + recognizable: chunky cupsole, three colour blocks
- *  (toe / heel accent, base mid), a clear swoosh, a tongue and a few laces. */
-function Sneaker({ position, rotation = [0, 0, 0], base = '#efe9de', accent = '#bd352f' }: { position: [number, number, number]; rotation?: [number, number, number]; base?: string; accent?: string }) {
-  const leather = (c: string) => <meshStandardMaterial color={c} roughness={0.5} metalness={0.02} />
-  return (
-    <group position={position} rotation={rotation as unknown as THREE.Euler}>
-      {/* sole: dark rubber outsole + white midsole band (thin, taller at heel) */}
-      <RoundedBox args={[0.14, 0.026, 0.4]} radius={0.012} smoothness={4} position={[0, 0.014, 0]} castShadow receiveShadow>
-        <meshStandardMaterial color={'#17130f'} roughness={0.85} />
-      </RoundedBox>
-      <RoundedBox args={[0.144, 0.05, 0.4]} radius={0.024} smoothness={4} position={[0, 0.05, 0]} castShadow>
-        <meshStandardMaterial color={'#f4efe6'} roughness={0.5} />
-      </RoundedBox>
-      {/* heel of the midsole sits a touch higher (Dunk wedge) */}
-      <RoundedBox args={[0.144, 0.07, 0.12]} radius={0.024} smoothness={4} position={[0, 0.06, -0.15]} castShadow>
-        <meshStandardMaterial color={'#f4efe6'} roughness={0.5} />
-      </RoundedBox>
-
-      {/* upper — a wedge volume, higher/rounder at the heel, tapering to the toe */}
-      <RoundedBox args={[0.136, 0.13, 0.28]} radius={0.06} smoothness={5} position={[0, 0.16, -0.05]} castShadow>
-        {leather(base)}
-      </RoundedBox>
-      {/* rounded toe box (accent) that wraps down to the sole at the front */}
-      <RoundedBox args={[0.138, 0.11, 0.16]} radius={0.065} smoothness={5} position={[0, 0.115, 0.14]} rotation={[-0.12, 0, 0]} castShadow>
-        {leather(accent)}
-      </RoundedBox>
-      {/* heel counter (accent), tall and rounded */}
-      <RoundedBox args={[0.138, 0.16, 0.11]} radius={0.055} smoothness={5} position={[0, 0.17, -0.16]} castShadow>
-        {leather(accent)}
-      </RoundedBox>
-      {/* ankle collar padding + dark opening */}
-      <RoundedBox args={[0.128, 0.06, 0.13]} radius={0.03} smoothness={4} position={[0, 0.235, -0.1]} rotation={[0.16, 0, 0]}>
-        {leather(base)}
-      </RoundedBox>
-      <mesh position={[0, 0.225, -0.06]} rotation={[0.45, 0, 0]}>
-        <cylinderGeometry args={[0.05, 0.05, 0.03, 20]} />
-        <meshStandardMaterial color={'#0f0c0a'} roughness={0.85} />
-      </mesh>
-      {/* tongue at the throat */}
-      <RoundedBox args={[0.086, 0.045, 0.1]} radius={0.02} smoothness={3} position={[0, 0.205, 0.04]} rotation={[0.3, 0, 0]}>
-        {leather('#f3eee4')}
-      </RoundedBox>
-      {/* three laces across the throat */}
-      {[0.06, 0.015, -0.03].map((z) => (
-        <mesh key={z} position={[0, 0.2, z]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.007, 0.007, 0.094, 8]} />
-          <meshStandardMaterial color={accent} roughness={0.55} />
-        </mesh>
-      ))}
-      {/* the Swoosh on both sides — tip toward the toe on both (mirrored) */}
-      {[-1, 1].map((sx) => (
-        <mesh key={sx} geometry={swooshGeo} position={[sx * 0.071, 0.115, -0.02]} rotation={[0, -Math.PI / 2, 0]} castShadow>
-          {leather(accent)}
-        </mesh>
-      ))}
-    </group>
-  )
+/** A three-stripe sneaker, lofted + subdivided in Blender (models/sneaker.glb).
+ *  Local: heel at -Z, toe at +Z, sole on y=0. */
+function Sneaker({ position, rotation = [0, 0, 0] }: { position: [number, number, number]; rotation?: [number, number, number] }) {
+  const obj = useModel('/models/sneaker.glb')
+  return <primitive object={obj} position={position} rotation={rotation as unknown as THREE.Euler} scale={0.4} />
 }
+useGLTF.preload('/models/sneaker.glb')
 
 /** A detailed gaming PC tower with a glass front revealing the RGB interior. */
 function PcTower({ position, rotation = [0, 0, 0] }: { position: [number, number, number]; rotation?: [number, number, number] }) {
@@ -437,13 +344,15 @@ function PcTower({ position, rotation = [0, 0, 0] }: { position: [number, number
 /** A lived-in stack of papers with the résumé on top — a binder clip + pen. */
 function PaperStack({ position, rotation = [0, 0, 0] }: { position: [number, number, number]; rotation?: [number, number, number] }) {
   const resume = useMemo(() => resumeSheetTexture(), [])
-  const W = 0.42, D = 0.55, T = 0.006
+  const W = 0.52, D = 0.66, T = 0.007
   // a loose stack: each sheet nudged + fanned a little so it reads as paper, not a box
   const sheets = [
-    { dx: 0.012, dz: -0.01, ry: -0.06, tone: '#e4ddcd' },
-    { dx: -0.014, dz: 0.008, ry: 0.05, tone: '#eae3d4' },
-    { dx: 0.006, dz: 0.014, ry: -0.02, tone: '#e7e0d0' },
-    { dx: -0.006, dz: -0.006, ry: 0.08, tone: '#ece6d8' },
+    { dx: 0.018, dz: -0.014, ry: -0.07, tone: '#e2dbca' },
+    { dx: -0.02, dz: 0.01, ry: 0.06, tone: '#e8e1d1' },
+    { dx: 0.01, dz: 0.018, ry: -0.03, tone: '#e5decd' },
+    { dx: -0.01, dz: -0.008, ry: 0.09, tone: '#ece6d8' },
+    { dx: 0.014, dz: 0.006, ry: -0.05, tone: '#e6dfce' },
+    { dx: -0.008, dz: 0.012, ry: 0.03, tone: '#eae3d4' },
     { dx: 0.0, dz: 0.0, ry: 0.02, tone: '#efe9dc' },
   ]
   return (
@@ -561,38 +470,274 @@ function Hook({ x, y }: { x: number; y: number }) {
   )
 }
 
-function OpenWrench({ x, y, len, r = 0 }: { x: number; y: number; len: number; r?: number }) {
+const steelBright = <meshStandardMaterial color={'#8a8d93'} metalness={0.85} roughness={0.3} />
+
+/** A combination wrench: ring end hung over the peg, flat shaft, open jaw. */
+function ComboWrench({ x, y, len, r = 0 }: { x: number; y: number; len: number; r?: number }) {
   return (
     <group position={[x, y, 0]} rotation={[0, 0, r]}>
-      <Hook x={0} y={len / 2 + 0.03} />
-      <mesh position={[0, 0, 0]} castShadow>
-        <boxGeometry args={[0.045, len, 0.028]} />
+      <Hook x={0} y={len / 2 + 0.065} />
+      {/* ring end hanging over the peg */}
+      <mesh position={[0, len / 2 + 0.03, 0]} castShadow>
+        <torusGeometry args={[0.046, 0.017, 10, 22]} />
         {toolMetal}
       </mesh>
-      <mesh position={[0, len / 2, 0]} castShadow>
-        <boxGeometry args={[0.13, 0.1, 0.032]} />
+      {/* flat tapered shaft */}
+      <mesh castShadow>
+        <boxGeometry args={[0.044, len, 0.014]} />
         {toolMetal}
       </mesh>
-      <mesh position={[0, -len / 2, 0]} castShadow>
-        <torusGeometry args={[0.055, 0.02, 8, 14]} />
-        {toolMetal}
+      {/* open-end head: round boss + two prongs leaving a jaw gap, angled 15° */}
+      <group position={[0, -len / 2 - 0.015, 0]} rotation={[0, 0, 0.3]}>
+        <mesh castShadow>
+          <cylinderGeometry args={[0.04, 0.04, 0.014, 16]} />
+          {toolMetal}
+        </mesh>
+        <mesh position={[-0.03, -0.035, 0]} rotation={[0, 0, 0.18]} castShadow>
+          <boxGeometry args={[0.02, 0.06, 0.014]} />
+          {toolMetal}
+        </mesh>
+        <mesh position={[0.032, -0.04, 0]} rotation={[0, 0, -0.14]} castShadow>
+          <boxGeometry args={[0.02, 0.07, 0.014]} />
+          {toolMetal}
+        </mesh>
+      </group>
+    </group>
+  )
+}
+
+/** A realistic short screwdriver hanging handle-up: butt, grip, ferrule, shaft, tip. */
+function Screwdriver({ x, y, c }: { x: number; y: number; c: string }) {
+  return (
+    <group position={[x, y, 0]}>
+      <Hook x={0} y={0.21} />
+      {/* rounded butt + grip (fatter at top, waisted) + dark band */}
+      <mesh position={[0, 0.16, 0]} castShadow>
+        <sphereGeometry args={[0.03, 14, 10]} />
+        <meshStandardMaterial color={c} roughness={0.45} />
+      </mesh>
+      <mesh position={[0, 0.09, 0]} castShadow>
+        <cylinderGeometry args={[0.031, 0.026, 0.13, 14]} />
+        <meshStandardMaterial color={c} roughness={0.45} />
+      </mesh>
+      <mesh position={[0, 0.03, 0]} castShadow>
+        <cylinderGeometry args={[0.027, 0.024, 0.03, 14]} />
+        <meshStandardMaterial color={'#1a1b1e'} roughness={0.6} />
+      </mesh>
+      {/* steel ferrule + shaft + flat tip */}
+      <mesh position={[0, 0.005, 0]} castShadow>
+        <cylinderGeometry args={[0.016, 0.016, 0.025, 10]} />
+        {steelBright}
+      </mesh>
+      <mesh position={[0, -0.07, 0]} castShadow>
+        <cylinderGeometry args={[0.009, 0.009, 0.13, 8]} />
+        {steelBright}
+      </mesh>
+      <mesh position={[0, -0.14, 0]} castShadow>
+        <boxGeometry args={[0.022, 0.018, 0.006]} />
+        {steelBright}
       </mesh>
     </group>
   )
 }
 
-function Screwdriver({ x, y, len, c }: { x: number; y: number; len: number; c: string }) {
+/** Pliers: two arms crossing at a visible pivot — jaws meet at the top, red
+ *  dipped handles spread into the V below. Nothing floats. */
+function Pliers({ x, y }: { x: number; y: number }) {
+  const grip = <meshStandardMaterial color={'#a03028'} roughness={0.5} metalness={0.05} />
   return (
     <group position={[x, y, 0]}>
-      <Hook x={0} y={len / 2 + 0.12} />
-      <mesh position={[0, 0, 0]} castShadow>
-        <cylinderGeometry args={[0.012, 0.012, len, 8]} />
+      <Hook x={0} y={0.15} />
+      {[-1, 1].map((s) => (
+        <group key={s}>
+          {/* jaw — leans in so the tips meet under the hook */}
+          <mesh position={[s * 0.014, 0.07, s * 0.006]} rotation={[0, 0, -s * 0.22]} castShadow>
+            <boxGeometry args={[0.026, 0.13, 0.014]} />
+            {toolMetal}
+          </mesh>
+          {/* handle — continues the same line through the pivot */}
+          <mesh position={[s * 0.036, -0.085, s * 0.006]} rotation={[0, 0, s * 0.28]} castShadow>
+            <boxGeometry args={[0.03, 0.18, 0.018]} />
+            {grip}
+          </mesh>
+        </group>
+      ))}
+      {/* nose tip where the jaws meet */}
+      <mesh position={[0, 0.135, 0]} castShadow>
+        <boxGeometry args={[0.034, 0.035, 0.024]} />
         {toolMetal}
       </mesh>
-      <mesh position={[0, len / 2 + 0.08, 0]} castShadow>
-        <cylinderGeometry args={[0.04, 0.032, 0.18, 10]} />
-        <meshStandardMaterial color={c} metalness={0.1} roughness={0.5} />
+      {/* pivot bolt through the crossing */}
+      <mesh position={[0, 0, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+        <cylinderGeometry args={[0.017, 0.017, 0.036, 12]} />
+        {steelBright}
       </mesh>
+    </group>
+  )
+}
+
+/** A tape measure: yellow body, rubber bumpers, front seam disc, thumb lock,
+ *  belt clip, and the tape tongue with its steel end hook. */
+function TapeMeasure({ x, y }: { x: number; y: number }) {
+  const YELLOW = <meshStandardMaterial color={'#c8a12e'} metalness={0.15} roughness={0.5} />
+  const RUBBER = <meshStandardMaterial color={'#17181b'} roughness={0.8} />
+  return (
+    <group position={[x, y, 0]}>
+      <Hook x={0} y={0.19} />
+      {/* body + rubber over-mould bumpers top/bottom */}
+      <RoundedBox args={[0.2, 0.22, 0.12]} radius={0.035} smoothness={3} castShadow>{YELLOW}</RoundedBox>
+      <RoundedBox args={[0.205, 0.06, 0.125]} radius={0.028} smoothness={2} position={[0, 0.085, 0]}>{RUBBER}</RoundedBox>
+      <RoundedBox args={[0.205, 0.06, 0.125]} radius={0.028} smoothness={2} position={[0, -0.085, 0]}>{RUBBER}</RoundedBox>
+      {/* front seam disc (the coiled-tape hub) */}
+      <mesh position={[0, 0.01, 0.062]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.062, 0.062, 0.006, 24]} />
+        {RUBBER}
+      </mesh>
+      {/* thumb lock on the front */}
+      <mesh position={[0, 0.055, 0.068]} castShadow>
+        <boxGeometry args={[0.03, 0.05, 0.012]} />
+        {RUBBER}
+      </mesh>
+      {/* belt clip on the side */}
+      <mesh position={[-0.108, 0.02, 0]} castShadow>
+        <boxGeometry args={[0.008, 0.12, 0.05]} />
+        {steelBright}
+      </mesh>
+      {/* tape tongue out the bottom slot + steel end hook */}
+      <mesh position={[0.02, -0.125, 0.01]} rotation={[0, 0, 0.06]} castShadow>
+        <boxGeometry args={[0.09, 0.016, 0.045]} />
+        <meshStandardMaterial color={'#d8b83e'} roughness={0.45} />
+      </mesh>
+      <mesh position={[0.068, -0.132, 0.01]} castShadow>
+        <boxGeometry args={[0.012, 0.03, 0.05]} />
+        {steelBright}
+      </mesh>
+    </group>
+  )
+}
+
+/** A real C-clamp: cast C-frame with a fixed pad on one end and the screw
+ *  (rod + T-handle + swivel pad) threading through the other. */
+function CClamp({ x, y }: { x: number; y: number }) {
+  return (
+    <group position={[x, y, 0]}>
+      <Hook x={0} y={0.17} />
+      {/* C frame — opening at the bottom */}
+      <mesh rotation={[0, 0, Math.PI * 0.75]} castShadow>
+        <torusGeometry args={[0.105, 0.026, 10, 26, Math.PI * 1.5]} />
+        {toolMetal}
+      </mesh>
+      {/* fixed jaw pad (left end of the gap, facing right) */}
+      <mesh position={[-0.062, -0.078, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
+        <cylinderGeometry args={[0.03, 0.03, 0.02, 12]} />
+        {toolMetal}
+      </mesh>
+      {/* screw boss on the right end + threaded rod pointing at the pad */}
+      <mesh position={[0.075, -0.078, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
+        <cylinderGeometry args={[0.032, 0.032, 0.045, 12]} />
+        {toolMetal}
+      </mesh>
+      <mesh position={[0.05, -0.078, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
+        <cylinderGeometry args={[0.01, 0.01, 0.16, 8]} />
+        {steelBright}
+      </mesh>
+      {/* swivel pad on the rod tip + T-handle at the tail */}
+      <mesh position={[-0.024, -0.078, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
+        <cylinderGeometry args={[0.02, 0.02, 0.014, 10]} />
+        {steelBright}
+      </mesh>
+      <mesh position={[0.13, -0.078, 0]} castShadow>
+        <cylinderGeometry args={[0.007, 0.007, 0.1, 8]} />
+        {steelBright}
+      </mesh>
+      {[-0.05, 0.05].map((dy) => (
+        <mesh key={dy} position={[0.13, -0.078 + dy, 0]} castShadow>
+          <sphereGeometry args={[0.011, 8, 6]} />
+          {steelBright}
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+/** A claw hammer: wood handle, steel head with striking face + rear claw. */
+function ClawHammer({ x, y }: { x: number; y: number }) {
+  return (
+    <group position={[x, y, 0]}>
+      <Hook x={0} y={0.36} />
+      {/* handle (hangs head-up, resting on the peg) */}
+      <mesh position={[0, 0.02, 0]} castShadow>
+        <cylinderGeometry args={[0.022, 0.028, 0.6, 10]} />
+        <meshStandardMaterial color={'#7a5530'} metalness={0.05} roughness={0.7} />
+      </mesh>
+      {/* rubber grip at the bottom */}
+      <mesh position={[0, -0.19, 0]} castShadow>
+        <cylinderGeometry args={[0.026, 0.03, 0.16, 10]} />
+        <meshStandardMaterial color={'#1a1b1e'} roughness={0.8} />
+      </mesh>
+      {/* head: eye block + neck + round striking face */}
+      <mesh position={[0, 0.33, 0]} castShadow>
+        <boxGeometry args={[0.09, 0.075, 0.055]} />
+        {toolMetal}
+      </mesh>
+      <mesh position={[0.075, 0.33, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
+        <cylinderGeometry args={[0.026, 0.034, 0.07, 12]} />
+        {toolMetal}
+      </mesh>
+      <mesh position={[0.115, 0.33, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
+        <cylinderGeometry args={[0.038, 0.038, 0.02, 12]} />
+        {steelBright}
+      </mesh>
+      {/* claw: two prongs curving down-back */}
+      {[-1, 1].map((s) => (
+        <mesh key={s} position={[-0.085, 0.3, s * 0.014]} rotation={[0, s * 0.12, -0.55]} castShadow>
+          <boxGeometry args={[0.09, 0.024, 0.016]} />
+          {toolMetal}
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+/** A box level: milled body, dark end caps, three vials, hang slot. */
+function SpiritLevel({ x, y }: { x: number; y: number }) {
+  const BODY = <meshStandardMaterial color={'#b8961f'} metalness={0.35} roughness={0.45} />
+  const vial = (vx: number, rot = 0) => (
+    <group key={vx} position={[vx, 0, 0.028]} rotation={[0, 0, rot]}>
+      <mesh>
+        <boxGeometry args={[0.16, 0.062, 0.012]} />
+        <meshStandardMaterial color={'#101114'} roughness={0.6} />
+      </mesh>
+      <mesh rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.018, 0.018, 0.12, 10]} />
+        <meshStandardMaterial color={'#2fbf6a'} emissive={'#0a2a1a'} emissiveIntensity={0.3} transparent opacity={0.8} />
+      </mesh>
+    </group>
+  )
+  return (
+    <group position={[x, y, 0]}>
+      <Hook x={-0.4} y={0.09} />
+      <Hook x={0.4} y={0.09} />
+      {/* extruded body + top rail groove */}
+      <mesh castShadow>
+        <boxGeometry args={[1.05, 0.11, 0.05]} />
+        {BODY}
+      </mesh>
+      <mesh position={[0, 0.035, 0.026]}>
+        <boxGeometry args={[1.0, 0.012, 0.004]} />
+        <meshStandardMaterial color={'#6a5712'} roughness={0.6} />
+      </mesh>
+      {/* dark end caps */}
+      {[-0.535, 0.535].map((ex) => (
+        <mesh key={ex} position={[ex, 0, 0]} castShadow>
+          <boxGeometry args={[0.03, 0.118, 0.058]} />
+          <meshStandardMaterial color={'#17181b'} roughness={0.7} />
+        </mesh>
+      ))}
+      {/* centre + 45° end vials */}
+      {vial(0)}
+      {vial(-0.36, Math.PI / 4)}
+      {vial(0.36, -Math.PI / 4)}
     </group>
   )
 }
@@ -600,93 +745,51 @@ function Screwdriver({ x, y, len, c }: { x: number; y: number; len: number; c: s
 function Tools() {
   return (
     <group position={[0, 0, -3.28]}>
-      {/* cluster A: graduated wrenches, upper-left of the board */}
-      <OpenWrench x={0.95} y={3.75} len={0.66} />
-      <OpenWrench x={1.22} y={3.72} len={0.58} r={0.06} />
-      <OpenWrench x={1.46} y={3.68} len={0.48} r={-0.05} />
+      {/* cluster A: graduated combination wrenches, upper-left of the board */}
+      <ComboWrench x={0.95} y={3.7} len={0.44} />
+      <ComboWrench x={1.22} y={3.68} len={0.38} r={0.06} />
+      <ComboWrench x={1.46} y={3.66} len={0.32} r={-0.05} />
 
       {/* cluster B: screwdrivers, upper-middle */}
-      <Screwdriver x={2.05} y={3.66} len={0.5} c={'#b23c3c'} />
-      <Screwdriver x={2.22} y={3.72} len={0.58} c={'#c8a12e'} />
-      <Screwdriver x={2.39} y={3.64} len={0.46} c={'#3c6bb2'} />
+      <Screwdriver x={2.05} y={3.52} c={'#b23c3c'} />
+      <Screwdriver x={2.24} y={3.56} c={'#c8a12e'} />
+      <Screwdriver x={2.43} y={3.5} c={'#3c6bb2'} />
 
-      {/* pliers, hanging by the jaw, mid-board */}
-      <group position={[2.95, 3.55, 0]}>
-        <Hook x={0} y={0.28} />
-        <mesh position={[0, 0.16, 0]} castShadow>
-          <coneGeometry args={[0.055, 0.22, 6]} />
-          {toolMetal}
-        </mesh>
-        <mesh position={[-0.035, -0.14, 0]} rotation={[0, 0, 0.16]} castShadow>
-          <boxGeometry args={[0.038, 0.42, 0.028]} />
-          <meshStandardMaterial color={'#7a2a2a'} metalness={0.3} roughness={0.5} />
-        </mesh>
-        <mesh position={[0.035, -0.14, 0.01]} rotation={[0, 0, -0.16]} castShadow>
-          <boxGeometry args={[0.038, 0.42, 0.028]} />
-          <meshStandardMaterial color={'#7a2a2a'} metalness={0.3} roughness={0.5} />
-        </mesh>
-      </group>
+      {/* pliers, mid-board */}
+      <Pliers x={2.95} y={3.5} />
 
       {/* claw hammer, upper-right */}
-      <group position={[3.7, 3.62, 0]}>
-        <Hook x={0} y={0.36} />
-        <mesh position={[0, 0.02, 0]} castShadow>
-          <cylinderGeometry args={[0.024, 0.03, 0.64, 8]} />
-          <meshStandardMaterial color={'#5a3d24'} metalness={0.1} roughness={0.75} />
-        </mesh>
-        <mesh position={[0, 0.34, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
-          <cylinderGeometry args={[0.05, 0.045, 0.24, 10]} />
-          {toolMetal}
-        </mesh>
-      </group>
+      <ClawHammer x={3.7} y={3.55} />
 
-      {/* tape measure (boxy), right */}
-      <group position={[4.25, 3.55, 0]}>
-        <Hook x={0} y={0.2} />
-        <RoundedBox args={[0.24, 0.26, 0.14]} radius={0.03} smoothness={2} castShadow>
-          <meshStandardMaterial color={'#c8a12e'} metalness={0.2} roughness={0.55} />
-        </RoundedBox>
-        <mesh position={[0, -0.16, 0]} castShadow>
-          <boxGeometry args={[0.12, 0.06, 0.1]} />
-          <meshStandardMaterial color={'#2a2a2e'} metalness={0.3} roughness={0.6} />
-        </mesh>
-      </group>
+      {/* tape measure, right */}
+      <TapeMeasure x={4.25} y={3.5} />
 
-      {/* coiled extension cord, lower-right */}
-      <mesh position={[4.3, 2.55, 0.02]} castShadow>
-        <torusGeometry args={[0.2, 0.05, 10, 24]} />
-        <meshStandardMaterial color={'#171719'} metalness={0.2} roughness={0.85} />
-      </mesh>
-      <Hook x={4.3} y={2.82} />
+      {/* coiled extension cord with a hanging plug, lower-right */}
+      <group position={[4.3, 2.55, 0.02]}>
+        <Hook x={0} y={0.27} />
+        <mesh castShadow>
+          <torusGeometry args={[0.2, 0.05, 10, 24]} />
+          <meshStandardMaterial color={'#171719'} metalness={0.2} roughness={0.85} />
+        </mesh>
+        {/* the plug end dangling off the coil */}
+        <mesh position={[0.12, -0.3, 0.02]} rotation={[0, 0, 0.2]} castShadow>
+          <boxGeometry args={[0.06, 0.09, 0.05]} />
+          <meshStandardMaterial color={'#101114'} roughness={0.7} />
+        </mesh>
+        {[-0.012, 0.012].map((dx) => (
+          <mesh key={dx} position={[0.107 + dx, -0.36, 0.02]} castShadow>
+            <boxGeometry args={[0.008, 0.035, 0.012]} />
+            {steelBright}
+          </mesh>
+        ))}
+      </group>
 
       {/* C-clamps, lower-left */}
-      {[0.8, 1.15].map((x, i) => (
-        <group key={x} position={[x, 2.4 - i * 0.05, 0]}>
-          <Hook x={0} y={0.2} />
-          <mesh castShadow>
-            <torusGeometry args={[0.12, 0.03, 8, 16, Math.PI * 1.4]} />
-            {toolMetal}
-          </mesh>
-          <mesh position={[0.02, -0.16, 0]} castShadow>
-            <cylinderGeometry args={[0.02, 0.02, 0.2, 8]} />
-            {toolMetal}
-          </mesh>
-        </group>
-      ))}
+      <CClamp x={0.85} y={2.45} />
+      <CClamp x={1.2} y={2.4} />
 
-      {/* spirit level, resting on two hooks lower-middle */}
-      <group position={[2.5, 2.15, 0]}>
-        <Hook x={-0.4} y={0.09} />
-        <Hook x={0.4} y={0.09} />
-        <mesh castShadow>
-          <boxGeometry args={[1.05, 0.11, 0.05]} />
-          <meshStandardMaterial color={'#b8961f'} metalness={0.3} roughness={0.5} />
-        </mesh>
-        <mesh position={[0, 0, 0.03]}>
-          <boxGeometry args={[0.15, 0.055, 0.02]} />
-          <meshStandardMaterial color={'#2fbf6a'} emissive={'#0a2a1a'} emissiveIntensity={0.25} transparent opacity={0.75} />
-        </mesh>
-      </group>
+      {/* box level resting on two hooks, lower-middle */}
+      <SpiritLevel x={2.5} y={2.15} />
     </group>
   )
 }
@@ -739,7 +842,7 @@ function BenchClutter() {
   return (
     <group position={[0, DESK_Y, 0]}>
       {/* a real dev board the arm is working over */}
-      <group position={[0.85, 0.02, 0.55]} rotation={[0, 0.3, 0]}>
+      <group position={[0.98, 0.02, 0.55]} rotation={[0, 0.3, 0]}>
         <RoundedBox args={[0.82, 0.03, 0.56]} radius={0.01} smoothness={2} castShadow receiveShadow>
           <meshStandardMaterial color={'#0f4a2c'} metalness={0.25} roughness={0.5} />
         </RoundedBox>
@@ -842,8 +945,8 @@ function BenchClutter() {
         </group>
       </group>
 
-      {/* real robotics parts by the monitors (far left) */}
-      <group position={[-3.5, 0.02, 0.5]}>
+      {/* real robotics parts by the monitors (far left) — pulled clear of the keyboard */}
+      <group position={[-3.95, 0.02, 0.78]}>
         {/* --- an Arduino-style board --- */}
         <group position={[-0.15, 0, 0.05]} rotation={[0, 0.35, 0]}>
           <RoundedBox args={[0.42, 0.028, 0.3]} radius={0.008} smoothness={2} castShadow>
@@ -1216,11 +1319,13 @@ export default function Stage() {
       {/* PC tucked under the desk, under the monitors */}
       <PcTower position={[-2.4, -2, -1.2]} rotation={[0, 0.5, 0]} />
       <ToolChest position={[-5.6, -2, -2.2]} />
-      {/* under the table beside the drawers: a basketball + a pair of Nike Dunks */}
-      <Basketball position={[1.35, -1.66, -1.35]} rotation={[0.3, 0.6, 0.1]} />
-      {/* a pair of Nike Dunks kicked off under the bench, beside the ball */}
-      <Sneaker position={[0.2, -2, -1.15]} rotation={[0, 0.9, 0]} />
-      <Sneaker position={[0.52, -2, -1.42]} rotation={[0, 1.7, 0.06]} />
+      {/* under the table beside the drawers: a basketball + a pair of sneakers
+          (Blender GLBs, loaded async so they need a Suspense boundary) */}
+      <Suspense fallback={null}>
+        <Basketball position={[1.35, -1.66, -1.35]} rotation={[0.3, 0.6, 0.1]} />
+        <Sneaker position={[0.2, -2, -1.15]} rotation={[0, 0.9, 0]} />
+        <Sneaker position={[0.52, -2, -1.42]} rotation={[0, 1.7, 0.06]} />
+      </Suspense>
 
       <EffectComposer>
         <Bloom luminanceThreshold={0.6} luminanceSmoothing={0.2} intensity={0.7} mipmapBlur />

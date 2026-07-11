@@ -20,8 +20,9 @@ const hw = W / 2, hd = D / 2
 const yBase = 0.12
 const yTop = yBase + Hp
 const zBack = -hd + 0.12
-const gz = 0.78 // gantry height (printing position)
+const gz = 1.02 // gantry height (mid-print position — nozzle sits above the part)
 const FIL = '#c9482f'
+const PRINT = '#39c6b6' // teal PLA of the part on the bed
 
 /** an extrusion bar */
 function Bar({ args, position, rot }: { args: [number, number, number]; position: [number, number, number]; rot?: [number, number, number] }) {
@@ -83,7 +84,22 @@ export default function Printer3D({ position, rotation = [0, 0, 0], scale = 1 }:
       {/* heated bed + build surface + a half-printed part */}
       <mesh position={[0, yBase + 0.13, 0.06]} castShadow receiveShadow><boxGeometry args={[0.95, 0.05, 0.95]} /><meshStandardMaterial color={'#12161c'} metalness={0.3} roughness={0.45} /></mesh>
       <mesh position={[0, yBase + 0.17, 0.06]} rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[0.88, 0.88]} /><meshStandardMaterial color={'#1a2632'} metalness={0.2} roughness={0.18} /></mesh>
-      <mesh position={[0.12, yBase + 0.28, 0.02]} castShadow><cylinderGeometry args={[0.11, 0.12, 0.2, 6]} /><meshStandardMaterial color={FIL} roughness={0.6} /></mesh>
+      {/* the part on the bed, built up in visible layers, still printing */}
+      <group position={[0.1, yBase + 0.17, 0.06]}>
+        {/* first-layer brim on the plate */}
+        <mesh position={[0, 0.005, 0]} castShadow receiveShadow><boxGeometry args={[0.34, 0.01, 0.34]} /><meshStandardMaterial color={PRINT} roughness={0.6} /></mesh>
+        {Array.from({ length: 8 }).map((_, i) => (
+          <mesh key={i} position={[0, 0.022 + i * 0.018, 0]} castShadow>
+            <boxGeometry args={[0.26, 0.018, 0.26]} />
+            <meshStandardMaterial color={i % 2 ? '#2fb0a2' : PRINT} roughness={0.55} />
+          </mesh>
+        ))}
+        {/* the current, half-finished top layer the nozzle is laying */}
+        <mesh position={[-0.05, 0.022 + 8 * 0.018, 0]} castShadow>
+          <boxGeometry args={[0.15, 0.018, 0.26]} />
+          <meshStandardMaterial color={PRINT} roughness={0.55} />
+        </mesh>
+      </group>
 
       {/* X gantry beam (static) */}
       <Bar args={[W + 0.1, 0.08, 0.1]} position={[0, gz, zBack + 0.14]} />
