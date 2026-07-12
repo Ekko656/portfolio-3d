@@ -5,9 +5,10 @@ Run headless:
   blender -b -P ball.py -- --render     # writes _preview_ball.png
   blender -b -P ball.py -- --export     # writes ../../public/models/basketball.glb
 
-Seam pattern = real 8-panel ball: two curved meridian seams meeting at two
-opposite "eyes" (poles), plus one belt that waves up/down as it circles — matched
-to a photo, NOT a straight cross/grid. Pebble grain via a fine noise displace.
+Seam pattern = real 8-panel ball, traced from a photo: one horizontal equator,
+one vertical great-circle ring, and two small circles in planes parallel to the
+ring (the bowed seams either side of the centre line). No convergence points,
+no waves. Pebble grain via a fine noise displace.
 """
 import bpy, math, os, sys
 from mathutils import Vector
