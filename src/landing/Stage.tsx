@@ -1292,8 +1292,12 @@ function WallDressing() {
             <meshStandardMaterial color={'#e2ddd0'} roughness={0.6} />
           </mesh>
         </group>
-        {/* the box level lying flat on the ledge, in front of the cans/jar/box */}
-        <LedgeLevel position={[0.05, 0.055, 0.11]} rotation={[-Math.PI / 2, 0.16, 0]} />
+        {/* the box level lying flat on the ledge, in front of the cans/jar/box.
+            Nested groups: outer spins it in-plane, inner lays it flat (vial up) —
+            avoids the Euler tilt from combining both on one node. */}
+        <group position={[0.05, 0.033, 0.06]} rotation={[0, 0.14, 0]}>
+          <LedgeLevel position={[0, 0.025, 0]} rotation={[-Math.PI / 2, 0, 0]} />
+        </group>
       </group>
       <Tools />
     </group>

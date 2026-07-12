@@ -88,32 +88,39 @@ def circle(center, u, v, radius, n=200):
 
 ZERO = Vector((0, 0, 0))
 
-def small_circle(axis, offset):
-    """A small circle whose plane is offset from the centre along `axis`
-    (offset as a fraction of R). Because it is NOT centred on the sphere it
-    projects to an OFF-CENTRE arc — a seam that bows to one side and never
-    reaches a pole, so it only ever crosses the equator."""
-    axis = axis.normalized()
-    center = axis * (offset * R)
-    rad = math.sqrt(max(0.0, R * R - (offset * R) ** 2))
-    ref = P if abs(axis.dot(P)) < 0.9 else A
-    u = axis.cross(ref).normalized()
-    v = axis.cross(u).normalized()
-    return circle(center, u, v, rad)
+def side_seam(sign):
+    """A CONCAVE side seam (not a circle): on the front face it is closest to the
+    centre line at the equator (x = X0) and curves AWAY (outward) as it rises or
+    falls, reaching the silhouette at height ±Z1. It wraps around the back to
+    close, touching the equator only — never a pole, never the centre seam.
+    `sign` = +1 (right) or -1 (left)."""
+    X0 = 0.22 * R          # closest approach to centre, at the equator
+    Z1 = 0.88 * R          # how high/low the seam reaches (ends on the silhouette)
+    XE = math.sqrt(R * R - Z1 * Z1)  # x at those ends (forced onto the silhouette)
+    def x_of(z):
+        f = z / Z1
+        return X0 + (XE - X0) * f * f   # parabola: min at equator, splays outward
+    pts, N = [], 120
+    for i in range(N):                  # front arc, z: +Z1 -> -Z1  (y < 0)
+        z = Z1 * (1 - 2 * i / N)
+        x = x_of(z)
+        y = -math.sqrt(max(0.0, R * R - x * x - z * z))
+        pts.append(Vector((sign * x, y, z)))
+    for i in range(N):                  # back arc, z: -Z1 -> +Z1  (y > 0)
+        z = Z1 * (-1 + 2 * i / N)
+        x = x_of(z)
+        y = math.sqrt(max(0.0, R * R - x * x - z * z))
+        pts.append(Vector((sign * x, y, z)))
+    return pts
 
 # 1) middle horizontal line — the equator (great circle, reads straight)
 seam_curve(circle(ZERO, A, B, R), "seam_eq")
 # 2) middle vertical line — great circle in the B-P plane (reads straight,
 #    viewed along -B), crossing the equator dead centre
 seam_curve(circle(ZERO, B, P, R), "seam_center")
-# 3) two side seams — small circles whose axis is tilted off the view direction
-#    so each bows OUTWARD and only touches the equator (no pole convergence)
-TILT = math.radians(22)   # tilt of the ring axis off ±A toward the view (B)
-OFF = 0.5                 # how far the ring sits toward each side
-axis_r = A * math.cos(TILT) + B * math.sin(TILT)
-axis_l = A * -math.cos(TILT) + B * math.sin(TILT)
-seam_curve(small_circle(axis_r, OFF), "seam_R")
-seam_curve(small_circle(axis_l, OFF), "seam_L")
+# 3) two concave side seams that pinch in at the equator and splay outward
+seam_curve(side_seam(1), "seam_R")
+seam_curve(side_seam(-1), "seam_L")
 
 # ---- render / export -------------------------------------------------------
 def setup_render():
@@ -127,7 +134,7 @@ def setup_render():
         pass
     cam_d = bpy.data.cameras.new("cam"); cam = bpy.data.objects.new("cam", cam_d)
     bpy.context.collection.objects.link(cam); scn.camera = cam
-    cam.location = (1.3, -3.3, 0.6); cam_d.lens = 60  # near-frontal, like the reference photo
+    cam.location = (0.0, -3.6, 0.0); cam_d.lens = 60  # near-frontal, like the reference photo
     # aim at origin
     dirv = Vector((0, 0, 0)) - Vector(cam.location)
     cam.rotation_euler = dirv.to_track_quat("-Z", "Y").to_euler()
