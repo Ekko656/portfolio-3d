@@ -57,13 +57,15 @@ bpy.context.view_layer.objects.active = ball
 bpy.ops.object.modifier_apply(modifier="pebble")
 
 # ---- seams -----------------------------------------------------------------
-# Exact classic pattern: ONE horizontal equator + THREE full meridians through
-# the poles (0/60/120 deg). From the front that reads as: a straight vertical
-# centre line, two concave lines flanking it, one horizontal line — and all six
-# half-lines converge at the top/bottom pole point. No waves.
-P = Vector((0.0, 1.0, 0.0))  # pole axis straight up
+# Exact real-basketball layout (traced from a photo, no convergence points):
+#   1. horizontal equator (great circle)
+#   2. ONE vertical great circle (the centre line + its back half)
+#   3. TWO small circles in planes PARALLEL to the vertical ring, offset to
+#      either side — these are the "concave" flanking seams. They never meet
+#      the vertical ring, so no eye/convergence anywhere.
+P = Vector((0.0, 0.0, 1.0))  # pole axis straight up (Blender Z)
 A = Vector((1.0, 0.0, 0.0))
-B = Vector((0.0, 0.0, 1.0))
+B = Vector((0.0, 1.0, 0.0))
 
 def seam_curve(points, name):
     cu = bpy.data.curves.new(name, "CURVE")
@@ -81,26 +83,26 @@ def seam_curve(points, name):
     bpy.context.collection.objects.link(ob)
     return ob
 
-def meridian(phi, n=200):
-    pts = []
-    for i in range(n):
-        s = i / n * 2 * math.pi
-        d = A * math.cos(phi) + B * math.sin(phi)
-        pts.append((P * (math.cos(s) * R)) + (d * (math.sin(s) * R)))
-    return pts
-
-def equator(n=200):
+def circle(center, u, v, radius, n=200):
+    """Circle on the sphere: center point + two in-plane unit vectors."""
     pts = []
     for i in range(n):
         t = i / n * 2 * math.pi
-        d = A * math.cos(t) + B * math.sin(t)
-        pts.append(d * R)
+        pts.append(center + u * (radius * math.cos(t)) + v * (radius * math.sin(t)))
     return pts
 
-seam_curve(meridian(0.0), "seam_m0")
-seam_curve(meridian(math.pi / 3), "seam_m1")
-seam_curve(meridian(2 * math.pi / 3), "seam_m2")
-seam_curve(equator(), "seam_eq")
+ZERO = Vector((0, 0, 0))
+# equator: horizontal great circle
+seam_curve(circle(ZERO, A, B, R), "seam_eq")
+# vertical ring: great circle in the B-P plane — from the front (looking along
+# -B) it reads as the straight vertical centre line
+seam_curve(circle(ZERO, B, P, R), "seam_ring")
+# two flanking small circles, planes parallel to the vertical ring, offset ±d
+# along A — the gentle bowed seams either side of the centre line
+d = 0.52 * R
+r_small = math.sqrt(R * R - d * d)
+seam_curve(circle(A * d, B, P, r_small), "seam_side_pos")
+seam_curve(circle(A * -d, B, P, r_small), "seam_side_neg")
 
 # ---- render / export -------------------------------------------------------
 def setup_render():
@@ -114,7 +116,7 @@ def setup_render():
         pass
     cam_d = bpy.data.cameras.new("cam"); cam = bpy.data.objects.new("cam", cam_d)
     bpy.context.collection.objects.link(cam); scn.camera = cam
-    cam.location = (1.4, -3.6, 0.35); cam_d.lens = 60  # near-frontal, like the reference photo
+    cam.location = (1.5, -3.2, 0.7); cam_d.lens = 60  # near-frontal, like the reference photo
     # aim at origin
     dirv = Vector((0, 0, 0)) - Vector(cam.location)
     cam.rotation_euler = dirv.to_track_quat("-Z", "Y").to_euler()

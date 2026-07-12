@@ -616,46 +616,82 @@ function TapeMeasure({ x, y }: { x: number; y: number }) {
   )
 }
 
-/** A real C-clamp: cast C-frame with a fixed pad on one end and the screw
- *  (rod + T-handle + swivel pad) threading through the other. */
-function CClamp({ x, y }: { x: number; y: number }) {
+/** An adjustable (crescent) wrench hanging head-up: round head boss, fixed
+ *  upper jaw, movable lower jaw with a gap, knurled adjuster worm, flat handle. */
+function AdjustableWrench({ x, y }: { x: number; y: number }) {
   return (
     <group position={[x, y, 0]}>
-      <Hook x={0} y={0.17} />
-      {/* C frame — opening at the bottom */}
-      <mesh rotation={[0, 0, Math.PI * 0.75]} castShadow>
-        <torusGeometry args={[0.105, 0.026, 10, 26, Math.PI * 1.5]} />
-        {toolMetal}
-      </mesh>
-      {/* fixed jaw pad (left end of the gap, facing right) */}
-      <mesh position={[-0.062, -0.078, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
-        <cylinderGeometry args={[0.03, 0.03, 0.02, 12]} />
-        {toolMetal}
-      </mesh>
-      {/* screw boss on the right end + threaded rod pointing at the pad */}
-      <mesh position={[0.075, -0.078, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
-        <cylinderGeometry args={[0.032, 0.032, 0.045, 12]} />
-        {toolMetal}
-      </mesh>
-      <mesh position={[0.05, -0.078, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
-        <cylinderGeometry args={[0.01, 0.01, 0.16, 8]} />
-        {steelBright}
-      </mesh>
-      {/* swivel pad on the rod tip + T-handle at the tail */}
-      <mesh position={[-0.024, -0.078, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
-        <cylinderGeometry args={[0.02, 0.02, 0.014, 10]} />
-        {steelBright}
-      </mesh>
-      <mesh position={[0.13, -0.078, 0]} castShadow>
-        <cylinderGeometry args={[0.007, 0.007, 0.1, 8]} />
-        {steelBright}
-      </mesh>
-      {[-0.05, 0.05].map((dy) => (
-        <mesh key={dy} position={[0.13, -0.078 + dy, 0]} castShadow>
-          <sphereGeometry args={[0.011, 8, 6]} />
+      <Hook x={0} y={0.26} />
+      {/* head boss hung over the peg (the jaw gap sits on the hook) */}
+      <group position={[0, 0.16, 0]} rotation={[0, 0, -0.25]}>
+        <mesh rotation={[Math.PI / 2, 0, 0]} castShadow>
+          <cylinderGeometry args={[0.07, 0.07, 0.024, 18]} />
+          {toolMetal}
+        </mesh>
+        {/* fixed jaw (upper prong) */}
+        <mesh position={[-0.045, 0.085, 0]} rotation={[0, 0, 0.12]} castShadow>
+          <boxGeometry args={[0.032, 0.11, 0.022]} />
+          {toolMetal}
+        </mesh>
+        {/* movable jaw (lower prong, leaving the adjustable gap) */}
+        <mesh position={[0.028, 0.07, 0]} rotation={[0, 0, -0.06]} castShadow>
+          <boxGeometry args={[0.036, 0.07, 0.022]} />
+          {toolMetal}
+        </mesh>
+        {/* knurled adjuster worm set into the head */}
+        <mesh position={[0.052, -0.005, 0]} rotation={[0, 0, 1.15]} castShadow>
+          <cylinderGeometry args={[0.022, 0.022, 0.05, 12]} />
           {steelBright}
         </mesh>
+      </group>
+      {/* flat tapered handle with a hang hole */}
+      <mesh position={[0.035, -0.08, 0]} rotation={[0, 0, -0.12]} castShadow>
+        <boxGeometry args={[0.055, 0.36, 0.018]} />
+        {toolMetal}
+      </mesh>
+      <mesh position={[0.055, -0.235, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.014, 0.014, 0.024, 10]} />
+        <meshStandardMaterial color={'#15161a'} roughness={0.6} />
+      </mesh>
+    </group>
+  )
+}
+
+/** A handsaw hung by its handle, blade sweeping out sideways over the board. */
+function Handsaw({ x, y }: { x: number; y: number }) {
+  const WOOD = <meshStandardMaterial color={'#6a4a28'} metalness={0.05} roughness={0.65} />
+  return (
+    <group position={[x, y, 0]}>
+      <Hook x={0} y={0.1} />
+      {/* closed wooden handle: outer grip ring + inner web */}
+      <mesh rotation={[0, 0, 0.2]} castShadow>
+        <torusGeometry args={[0.085, 0.028, 10, 22]} />
+        {WOOD}
+      </mesh>
+      <mesh rotation={[0, 0, 0.2]}>
+        <cylinderGeometry args={[0.062, 0.062, 0.018, 18]} />
+        {WOOD}
+      </mesh>
+      {/* two brass saw screws where the blade enters the handle */}
+      {[[0.1, 0.03], [0.13, -0.03]].map(([bx, by], i) => (
+        <mesh key={i} position={[bx, by, 0.014]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.016, 0.016, 0.012, 10]} />
+          <meshStandardMaterial color={'#c9a24a'} metalness={0.8} roughness={0.35} />
+        </mesh>
       ))}
+      {/* blade: long plate tapering to the tip, teeth strip along the bottom */}
+      <mesh position={[0.48, 0.0, 0]} rotation={[0, 0, 0.06]} castShadow>
+        <boxGeometry args={[0.72, 0.15, 0.008]} />
+        {steelBright}
+      </mesh>
+      <mesh position={[0.82, 0.05, 0]} rotation={[0, 0, 0.35]} castShadow>
+        <boxGeometry args={[0.16, 0.1, 0.008]} />
+        {steelBright}
+      </mesh>
+      <mesh position={[0.48, -0.075, 0]} rotation={[0, 0, 0.06]}>
+        <boxGeometry args={[0.7, 0.014, 0.012]} />
+        <meshStandardMaterial color={'#3a3d43'} metalness={0.6} roughness={0.5} />
+      </mesh>
     </group>
   )
 }
@@ -743,53 +779,57 @@ function SpiritLevel({ x, y }: { x: number; y: number }) {
 }
 
 function Tools() {
+  // per-tool scale wrappers keep each tool anchored at its board position
+  const at = (x: number, y: number, s: number, el: JSX.Element) => (
+    <group position={[x, y, 0]} scale={s}>{el}</group>
+  )
   return (
     <group position={[0, 0, -3.28]}>
       {/* cluster A: graduated combination wrenches, upper-left of the board */}
-      <ComboWrench x={0.95} y={3.7} len={0.44} />
-      <ComboWrench x={1.22} y={3.68} len={0.38} r={0.06} />
-      <ComboWrench x={1.46} y={3.66} len={0.32} r={-0.05} />
+      {at(0.95, 3.65, 1.35, <ComboWrench x={0} y={0} len={0.44} />)}
+      {at(1.28, 3.63, 1.35, <ComboWrench x={0} y={0} len={0.38} r={0.06} />)}
+      {at(1.58, 3.61, 1.35, <ComboWrench x={0} y={0} len={0.32} r={-0.05} />)}
 
       {/* cluster B: screwdrivers, upper-middle */}
-      <Screwdriver x={2.05} y={3.52} c={'#b23c3c'} />
-      <Screwdriver x={2.24} y={3.56} c={'#c8a12e'} />
-      <Screwdriver x={2.43} y={3.5} c={'#3c6bb2'} />
+      {at(2.15, 3.5, 1.5, <Screwdriver x={0} y={0} c={'#b23c3c'} />)}
+      {at(2.42, 3.55, 1.5, <Screwdriver x={0} y={0} c={'#c8a12e'} />)}
+      {at(2.69, 3.48, 1.5, <Screwdriver x={0} y={0} c={'#3c6bb2'} />)}
 
       {/* pliers, mid-board */}
-      <Pliers x={2.95} y={3.5} />
+      {at(3.2, 3.5, 1.4, <Pliers x={0} y={0} />)}
 
       {/* claw hammer, upper-right */}
-      <ClawHammer x={3.7} y={3.55} />
+      {at(3.75, 3.5, 1.2, <ClawHammer x={0} y={0} />)}
 
       {/* tape measure, right */}
-      <TapeMeasure x={4.25} y={3.5} />
+      {at(4.35, 3.5, 1.35, <TapeMeasure x={0} y={0} />)}
 
       {/* coiled extension cord with a hanging plug, lower-right */}
-      <group position={[4.3, 2.55, 0.02]}>
-        <Hook x={0} y={0.27} />
+      <group position={[4.3, 2.7, 0.02]}>
+        <Hook x={0} y={0.32} />
         <mesh castShadow>
-          <torusGeometry args={[0.2, 0.05, 10, 24]} />
+          <torusGeometry args={[0.24, 0.06, 10, 24]} />
           <meshStandardMaterial color={'#171719'} metalness={0.2} roughness={0.85} />
         </mesh>
         {/* the plug end dangling off the coil */}
-        <mesh position={[0.12, -0.3, 0.02]} rotation={[0, 0, 0.2]} castShadow>
-          <boxGeometry args={[0.06, 0.09, 0.05]} />
+        <mesh position={[0.14, -0.36, 0.02]} rotation={[0, 0, 0.2]} castShadow>
+          <boxGeometry args={[0.07, 0.1, 0.06]} />
           <meshStandardMaterial color={'#101114'} roughness={0.7} />
         </mesh>
-        {[-0.012, 0.012].map((dx) => (
-          <mesh key={dx} position={[0.107 + dx, -0.36, 0.02]} castShadow>
-            <boxGeometry args={[0.008, 0.035, 0.012]} />
+        {[-0.014, 0.014].map((dx) => (
+          <mesh key={dx} position={[0.125 + dx, -0.43, 0.02]} castShadow>
+            <boxGeometry args={[0.01, 0.04, 0.014]} />
             {steelBright}
           </mesh>
         ))}
       </group>
 
-      {/* C-clamps, lower-left */}
-      <CClamp x={0.85} y={2.45} />
-      <CClamp x={1.2} y={2.4} />
+      {/* lower-left: an adjustable wrench + a handsaw (readable garage staples) */}
+      {at(0.55, 2.45, 1.35, <AdjustableWrench x={0} y={0} />)}
+      {at(1.35, 2.95, 1.25, <Handsaw x={0} y={0} />)}
 
-      {/* box level resting on two hooks, lower-middle */}
-      <SpiritLevel x={2.5} y={2.15} />
+      {/* box level hanging under the tool ledge */}
+      {at(2.5, 1.82, 1.15, <SpiritLevel x={0} y={0} />)}
     </group>
   )
 }
@@ -1203,19 +1243,85 @@ function WallDressing() {
             {mSteel}
           </mesh>
         ))}
-        {/* spray can, jar of bits, small box */}
-        <mesh position={[-1.1, 0.24, 0.02]} castShadow>
-          <cylinderGeometry args={[0.11, 0.11, 0.42, 14]} />
-          <meshStandardMaterial color={'#3a6a8a'} metalness={0.4} roughness={0.5} />
-        </mesh>
-        <mesh position={[-0.7, 0.2, 0.02]} castShadow>
-          <cylinderGeometry args={[0.12, 0.12, 0.34, 14]} />
-          <meshStandardMaterial color={'#6a5a3a'} metalness={0.1} roughness={0.5} transparent opacity={0.85} />
-        </mesh>
-        <mesh position={[0.9, 0.16, 0.02]} castShadow>
-          <boxGeometry args={[0.36, 0.3, 0.26]} />
-          <meshStandardMaterial color={'#7a3b2a'} metalness={0.1} roughness={0.7} />
-        </mesh>
+        {/* spray-paint can: body + label band + shoulder + cap + nozzle */}
+        <group position={[-1.1, 0.03, 0.02]}>
+          <mesh position={[0, 0.19, 0]} castShadow>
+            <cylinderGeometry args={[0.105, 0.105, 0.38, 18]} />
+            <meshStandardMaterial color={'#2e5a78'} metalness={0.55} roughness={0.35} />
+          </mesh>
+          {/* wrapped paper label */}
+          <mesh position={[0, 0.17, 0]}>
+            <cylinderGeometry args={[0.108, 0.108, 0.2, 18]} />
+            <meshStandardMaterial color={'#d8d2c2'} roughness={0.6} />
+          </mesh>
+          <mesh position={[0, 0.17, 0]}>
+            <cylinderGeometry args={[0.109, 0.109, 0.07, 18]} />
+            <meshStandardMaterial color={'#b0432e'} roughness={0.55} />
+          </mesh>
+          {/* rolled rim + tapered shoulder + cap + nozzle */}
+          <mesh position={[0, 0.385, 0]} castShadow>
+            <torusGeometry args={[0.09, 0.014, 8, 18]} />
+            {steelBright}
+          </mesh>
+          <mesh position={[0, 0.415, 0]} castShadow>
+            <cylinderGeometry args={[0.055, 0.09, 0.05, 18]} />
+            <meshStandardMaterial color={'#8a8d93'} metalness={0.7} roughness={0.35} />
+          </mesh>
+          <mesh position={[0, 0.465, 0]} castShadow>
+            <cylinderGeometry args={[0.05, 0.05, 0.06, 16]} />
+            <meshStandardMaterial color={'#c23a3a'} roughness={0.5} />
+          </mesh>
+          <mesh position={[0, 0.5, 0]}>
+            <cylinderGeometry args={[0.012, 0.012, 0.02, 8]} />
+            <meshStandardMaterial color={'#e8e4dc'} roughness={0.5} />
+          </mesh>
+        </group>
+        {/* glass jar of screws: glass, metal lid, visible hardware inside */}
+        <group position={[-0.68, 0.03, 0.02]}>
+          <mesh position={[0, 0.14, 0]}>
+            <cylinderGeometry args={[0.115, 0.115, 0.26, 18]} />
+            <meshStandardMaterial color={'#aebfc2'} metalness={0.1} roughness={0.12} transparent opacity={0.3} />
+          </mesh>
+          {/* the screws filling the lower half, seen through the glass */}
+          <mesh position={[0, 0.08, 0]} castShadow>
+            <cylinderGeometry args={[0.1, 0.1, 0.14, 14]} />
+            <meshStandardMaterial color={'#55575c'} metalness={0.7} roughness={0.55} />
+          </mesh>
+          {/* screw-top lid with a knurl groove */}
+          <mesh position={[0, 0.295, 0]} castShadow>
+            <cylinderGeometry args={[0.105, 0.105, 0.05, 18]} />
+            <meshStandardMaterial color={'#8a6a2a'} metalness={0.6} roughness={0.4} />
+          </mesh>
+          <mesh position={[0, 0.283, 0]}>
+            <cylinderGeometry args={[0.107, 0.107, 0.012, 18]} />
+            <meshStandardMaterial color={'#6a5220'} metalness={0.6} roughness={0.5} />
+          </mesh>
+        </group>
+        {/* small cardboard parts box: flaps + packing-tape strip + side label */}
+        <group position={[0.9, 0.03, 0.02]} rotation={[0, -0.15, 0]}>
+          <mesh position={[0, 0.14, 0]} castShadow>
+            <boxGeometry args={[0.36, 0.28, 0.26]} />
+            <meshStandardMaterial color={'#8a5f38'} roughness={0.75} />
+          </mesh>
+          {/* slightly-open top flaps */}
+          <mesh position={[-0.09, 0.29, 0]} rotation={[0, 0, 0.12]} castShadow>
+            <boxGeometry args={[0.18, 0.012, 0.25]} />
+            <meshStandardMaterial color={'#96693e'} roughness={0.75} />
+          </mesh>
+          <mesh position={[0.09, 0.295, 0]} rotation={[0, 0, -0.18]} castShadow>
+            <boxGeometry args={[0.18, 0.012, 0.25]} />
+            <meshStandardMaterial color={'#96693e'} roughness={0.75} />
+          </mesh>
+          {/* packing tape down the front + a shipping label */}
+          <mesh position={[0, 0.14, 0.131]}>
+            <boxGeometry args={[0.07, 0.28, 0.004]} />
+            <meshStandardMaterial color={'#b8a988'} roughness={0.4} />
+          </mesh>
+          <mesh position={[-0.09, 0.17, 0.131]}>
+            <boxGeometry args={[0.12, 0.08, 0.004]} />
+            <meshStandardMaterial color={'#e2ddd0'} roughness={0.6} />
+          </mesh>
+        </group>
       </group>
       <Tools />
     </group>
@@ -1322,7 +1428,7 @@ export default function Stage() {
       {/* under the table beside the drawers: a basketball + a pair of sneakers
           (Blender GLBs, loaded async so they need a Suspense boundary) */}
       <Suspense fallback={null}>
-        <Basketball position={[1.35, -1.66, -1.35]} rotation={[0.3, 0.6, 0.1]} />
+        <Basketball position={[1.35, -1.66, -1.35]} rotation={[-Math.PI / 2 + 0.15, 0.7, 0]} />
         <Sneaker position={[0.2, -2, -1.15]} rotation={[0, 0.9, 0]} />
         <Sneaker position={[0.52, -2, -1.42]} rotation={[0, 1.7, 0.06]} />
       </Suspense>

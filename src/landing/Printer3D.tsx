@@ -39,9 +39,11 @@ export default function Printer3D({ position, rotation = [0, 0, 0], scale = 1 }:
   const fan = useRef<THREE.Group>(null)
   useFrame(({ clock }, dt) => {
     const t = clock.elapsedTime
-    // the print head glides slowly side-to-side + tiny layer bob, like it's printing
+    // the print head glides slowly side-to-side + tiny layer bob, like it's
+    // printing — amplitude kept within the part's footprint so the nozzle
+    // always sits over the print
     if (head.current) {
-      head.current.position.x = 0.1 + Math.sin(t * 0.8) * 0.28
+      head.current.position.x = 0.1 + Math.sin(t * 0.8) * 0.09
       head.current.position.y = gz + Math.sin(t * 0.8) * 0.005
     }
     if (fan.current) fan.current.rotation.z += dt * 12
@@ -84,8 +86,9 @@ export default function Printer3D({ position, rotation = [0, 0, 0], scale = 1 }:
       {/* heated bed + build surface + a half-printed part */}
       <mesh position={[0, yBase + 0.13, 0.06]} castShadow receiveShadow><boxGeometry args={[0.95, 0.05, 0.95]} /><meshStandardMaterial color={'#12161c'} metalness={0.3} roughness={0.45} /></mesh>
       <mesh position={[0, yBase + 0.17, 0.06]} rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[0.88, 0.88]} /><meshStandardMaterial color={'#1a2632'} metalness={0.2} roughness={0.18} /></mesh>
-      {/* the part on the bed, built up in visible layers, still printing */}
-      <group position={[0.1, yBase + 0.17, 0.06]}>
+      {/* the part on the bed, built up in visible layers, still printing —
+          placed directly under the nozzle's travel line */}
+      <group position={[0.1, yBase + 0.17, -0.13]}>
         {/* first-layer brim on the plate */}
         <mesh position={[0, 0.005, 0]} castShadow receiveShadow><boxGeometry args={[0.34, 0.01, 0.34]} /><meshStandardMaterial color={PRINT} roughness={0.6} /></mesh>
         {Array.from({ length: 8 }).map((_, i) => (
