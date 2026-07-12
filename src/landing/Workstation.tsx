@@ -212,8 +212,8 @@ export default function Workstation() {
   // Keyboard + mouse in front; the connector lays within the arm's reach.
   return (
     <group>
-      <Monitor position={[-2.95, 0, -0.45]} rotation={[0, 0.14, 0]} mode="telemetry" />
-      <Monitor position={[-1.55, 0, -0.45]} rotation={[0, -0.14, 0]} mode="off" />
+      <Monitor position={[-3.05, 0, -0.5]} rotation={[0, 0.16, 0]} mode="telemetry" />
+      <Monitor position={[-1.45, 0, -0.5]} rotation={[0, -0.16, 0]} mode="off" />
       <Keyboard position={[-2.15, 0, 0.6]} rotation={[0, 0.05, 0]} />
       <Mouse position={[-1.1, 0, 0.7]} />
       <Connector position={[0.95, 0, 0.4]} rotation={[0, -0.5, 0]} />

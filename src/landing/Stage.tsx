@@ -735,45 +735,18 @@ function ClawHammer({ x, y }: { x: number; y: number }) {
   )
 }
 
-/** A box level: milled body, dark end caps, three vials, hang slot. */
-function SpiritLevel({ x, y }: { x: number; y: number }) {
-  const BODY = <meshStandardMaterial color={'#b8961f'} metalness={0.35} roughness={0.45} />
-  const vial = (vx: number, rot = 0) => (
-    <group key={vx} position={[vx, 0, 0.028]} rotation={[0, 0, rot]}>
-      <mesh>
-        <boxGeometry args={[0.16, 0.062, 0.012]} />
-        <meshStandardMaterial color={'#101114'} roughness={0.6} />
-      </mesh>
-      <mesh rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[0.018, 0.018, 0.12, 10]} />
-        <meshStandardMaterial color={'#2fbf6a'} emissive={'#0a2a1a'} emissiveIntensity={0.3} transparent opacity={0.8} />
-      </mesh>
-    </group>
-  )
+/** The simple box level, lying flat on the ledge shelf. */
+function LedgeLevel({ position, rotation = [0, 0, 0] }: { position: [number, number, number]; rotation?: [number, number, number] }) {
   return (
-    <group position={[x, y, 0]}>
-      <Hook x={-0.4} y={0.09} />
-      <Hook x={0.4} y={0.09} />
-      {/* extruded body + top rail groove */}
-      <mesh castShadow>
+    <group position={position} rotation={rotation as unknown as THREE.Euler}>
+      <mesh castShadow receiveShadow>
         <boxGeometry args={[1.05, 0.11, 0.05]} />
-        {BODY}
+        <meshStandardMaterial color={'#b8961f'} metalness={0.3} roughness={0.5} />
       </mesh>
-      <mesh position={[0, 0.035, 0.026]}>
-        <boxGeometry args={[1.0, 0.012, 0.004]} />
-        <meshStandardMaterial color={'#6a5712'} roughness={0.6} />
+      <mesh position={[0, 0, 0.03]}>
+        <boxGeometry args={[0.15, 0.055, 0.02]} />
+        <meshStandardMaterial color={'#2fbf6a'} emissive={'#0a2a1a'} emissiveIntensity={0.25} transparent opacity={0.75} />
       </mesh>
-      {/* dark end caps */}
-      {[-0.535, 0.535].map((ex) => (
-        <mesh key={ex} position={[ex, 0, 0]} castShadow>
-          <boxGeometry args={[0.03, 0.118, 0.058]} />
-          <meshStandardMaterial color={'#17181b'} roughness={0.7} />
-        </mesh>
-      ))}
-      {/* centre + 45° end vials */}
-      {vial(0)}
-      {vial(-0.36, Math.PI / 4)}
-      {vial(0.36, -Math.PI / 4)}
     </group>
   )
 }
@@ -827,9 +800,6 @@ function Tools() {
       {/* lower-left: an adjustable wrench + a handsaw (readable garage staples) */}
       {at(0.55, 2.45, 1.35, <AdjustableWrench x={0} y={0} />)}
       {at(1.35, 2.95, 1.25, <Handsaw x={0} y={0} />)}
-
-      {/* box level hanging under the tool ledge */}
-      {at(2.5, 1.82, 1.15, <SpiritLevel x={0} y={0} />)}
     </group>
   )
 }
@@ -1174,8 +1144,8 @@ function Background() {
           <meshStandardMaterial color={i ? '#b23c3c' : '#1a1a1e'} roughness={0.7} metalness={0.2} />
         </mesh>
       ))}
-      {/* a shop stool in front of the bench (seat ~bench height, base on floor) */}
-      <group position={[-2.7, -2, 2.4]}>
+      {/* a shop stool pulled up to the bench, left of the monitors */}
+      <group position={[-3.75, -2, 0.75]}>
         {/* padded seat */}
         <mesh position={[0, 2.0, 0]} castShadow receiveShadow>
           <cylinderGeometry args={[0.44, 0.44, 0.14, 28]} />
@@ -1322,6 +1292,8 @@ function WallDressing() {
             <meshStandardMaterial color={'#e2ddd0'} roughness={0.6} />
           </mesh>
         </group>
+        {/* the box level lying flat on the ledge, in front of the cans/jar/box */}
+        <LedgeLevel position={[0.05, 0.055, 0.11]} rotation={[-Math.PI / 2, 0.16, 0]} />
       </group>
       <Tools />
     </group>

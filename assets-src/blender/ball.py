@@ -5,10 +5,10 @@ Run headless:
   blender -b -P ball.py -- --render     # writes _preview_ball.png
   blender -b -P ball.py -- --export     # writes ../../public/models/basketball.glb
 
-Seam pattern = real 8-panel ball, traced from a photo: one horizontal equator,
-one vertical great-circle ring, and two small circles in planes parallel to the
-ring (the bowed seams either side of the centre line). No convergence points,
-no waves. Pebble grain via a fine noise displace.
+Seam pattern (traced from a photo): a horizontal equator + a vertical centre
+line (both great circles, so they read straight) + two side seams that are
+OFFSET small circles tilted off the view axis, so each one bows OUTWARD and only
+ever crosses the equator — no pole convergence. Pebble grain via noise displace.
 """
 import bpy, math, os, sys
 from mathutils import Vector
@@ -58,12 +58,6 @@ bpy.context.view_layer.objects.active = ball
 bpy.ops.object.modifier_apply(modifier="pebble")
 
 # ---- seams -----------------------------------------------------------------
-# Exact real-basketball layout (traced from a photo, no convergence points):
-#   1. horizontal equator (great circle)
-#   2. ONE vertical great circle (the centre line + its back half)
-#   3. TWO small circles in planes PARALLEL to the vertical ring, offset to
-#      either side — these are the "concave" flanking seams. They never meet
-#      the vertical ring, so no eye/convergence anywhere.
 P = Vector((0.0, 0.0, 1.0))  # pole axis straight up (Blender Z)
 A = Vector((1.0, 0.0, 0.0))
 B = Vector((0.0, 1.0, 0.0))
@@ -71,8 +65,8 @@ B = Vector((0.0, 1.0, 0.0))
 def seam_curve(points, name):
     cu = bpy.data.curves.new(name, "CURVE")
     cu.dimensions = "3D"
-    cu.bevel_depth = 0.02
-    cu.bevel_resolution = 3
+    cu.bevel_depth = 0.032  # thick channel like a real moulded seam
+    cu.bevel_resolution = 4
     cu.use_fill_caps = True
     sp = cu.splines.new("POLY")
     sp.points.add(len(points) - 1)
@@ -93,17 +87,33 @@ def circle(center, u, v, radius, n=200):
     return pts
 
 ZERO = Vector((0, 0, 0))
-# equator: horizontal great circle
+
+def small_circle(axis, offset):
+    """A small circle whose plane is offset from the centre along `axis`
+    (offset as a fraction of R). Because it is NOT centred on the sphere it
+    projects to an OFF-CENTRE arc — a seam that bows to one side and never
+    reaches a pole, so it only ever crosses the equator."""
+    axis = axis.normalized()
+    center = axis * (offset * R)
+    rad = math.sqrt(max(0.0, R * R - (offset * R) ** 2))
+    ref = P if abs(axis.dot(P)) < 0.9 else A
+    u = axis.cross(ref).normalized()
+    v = axis.cross(u).normalized()
+    return circle(center, u, v, rad)
+
+# 1) middle horizontal line — the equator (great circle, reads straight)
 seam_curve(circle(ZERO, A, B, R), "seam_eq")
-# vertical ring: great circle in the B-P plane — from the front (looking along
-# -B) it reads as the straight vertical centre line
-seam_curve(circle(ZERO, B, P, R), "seam_ring")
-# two flanking small circles, planes parallel to the vertical ring, offset ±d
-# along A — the gentle bowed seams either side of the centre line
-d = 0.52 * R
-r_small = math.sqrt(R * R - d * d)
-seam_curve(circle(A * d, B, P, r_small), "seam_side_pos")
-seam_curve(circle(A * -d, B, P, r_small), "seam_side_neg")
+# 2) middle vertical line — great circle in the B-P plane (reads straight,
+#    viewed along -B), crossing the equator dead centre
+seam_curve(circle(ZERO, B, P, R), "seam_center")
+# 3) two side seams — small circles whose axis is tilted off the view direction
+#    so each bows OUTWARD and only touches the equator (no pole convergence)
+TILT = math.radians(22)   # tilt of the ring axis off ±A toward the view (B)
+OFF = 0.5                 # how far the ring sits toward each side
+axis_r = A * math.cos(TILT) + B * math.sin(TILT)
+axis_l = A * -math.cos(TILT) + B * math.sin(TILT)
+seam_curve(small_circle(axis_r, OFF), "seam_R")
+seam_curve(small_circle(axis_l, OFF), "seam_L")
 
 # ---- render / export -------------------------------------------------------
 def setup_render():
@@ -117,7 +127,7 @@ def setup_render():
         pass
     cam_d = bpy.data.cameras.new("cam"); cam = bpy.data.objects.new("cam", cam_d)
     bpy.context.collection.objects.link(cam); scn.camera = cam
-    cam.location = (1.5, -3.2, 0.7); cam_d.lens = 60  # near-frontal, like the reference photo
+    cam.location = (1.3, -3.3, 0.6); cam_d.lens = 60  # near-frontal, like the reference photo
     # aim at origin
     dirv = Vector((0, 0, 0)) - Vector(cam.location)
     cam.rotation_euler = dirv.to_track_quat("-Z", "Y").to_euler()
