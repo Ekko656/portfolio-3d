@@ -89,28 +89,22 @@ def circle(center, u, v, radius, n=200):
 ZERO = Vector((0, 0, 0))
 
 def side_seam(sign):
-    """A CONCAVE side seam (not a circle): on the front face it is closest to the
-    centre line at the equator (x = X0) and curves AWAY (outward) as it rises or
-    falls, reaching the silhouette at height ±Z1. It wraps around the back to
-    close, touching the equator only — never a pole, never the centre seam.
-    `sign` = +1 (right) or -1 (left)."""
-    X0 = 0.22 * R          # closest approach to centre, at the equator
-    Z1 = 0.88 * R          # how high/low the seam reaches (ends on the silhouette)
-    XE = math.sqrt(R * R - Z1 * Z1)  # x at those ends (forced onto the silhouette)
-    def x_of(z):
-        f = z / Z1
-        return X0 + (XE - X0) * f * f   # parabola: min at equator, splays outward
-    pts, N = [], 120
-    for i in range(N):                  # front arc, z: +Z1 -> -Z1  (y < 0)
-        z = Z1 * (1 - 2 * i / N)
-        x = x_of(z)
-        y = -math.sqrt(max(0.0, R * R - x * x - z * z))
-        pts.append(Vector((sign * x, y, z)))
-    for i in range(N):                  # back arc, z: -Z1 -> +Z1  (y > 0)
-        z = Z1 * (-1 + 2 * i / N)
-        x = x_of(z)
-        y = math.sqrt(max(0.0, R * R - x * x - z * z))
-        pts.append(Vector((sign * x, y, z)))
+    """A smooth CONCAVE side seam: the centre meridian (a great circle, so it is
+    perfectly smooth with no cusp) pushed sideways by an offset that is SMALL at
+    the equator and LARGE toward the poles, then re-projected onto the sphere.
+    Result: closest to the centre line where it crosses the equator, curving
+    steadily outward toward the top and bottom — a pronounced bow, no wave, and
+    it never reaches a pole or the centre seam. `sign` = +1 right / -1 left."""
+    X0 = 0.30 * R          # offset at the equator (the pinch — slightly off-centre)
+    XE = 0.64 * R          # offset toward the poles (pronounced splay)
+    pts, N = [], 200
+    for i in range(N):
+        th = 2 * math.pi * i / N
+        # centre meridian in the B-P plane (x = 0), front half at th in (0, pi)
+        base = P * (R * math.cos(th)) + B * (-R * math.sin(th))
+        dx = X0 + (XE - X0) * (math.cos(th) ** 2)   # small at equator, large at poles
+        p = (base + A * (sign * dx)).normalized() * R
+        pts.append(p)
     return pts
 
 # 1) middle horizontal line — the equator (great circle, reads straight)

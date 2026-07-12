@@ -1144,29 +1144,6 @@ function Background() {
           <meshStandardMaterial color={i ? '#b23c3c' : '#1a1a1e'} roughness={0.7} metalness={0.2} />
         </mesh>
       ))}
-      {/* a shop stool pulled up to the bench, left of the monitors */}
-      <group position={[-3.75, -2, 0.75]}>
-        {/* padded seat */}
-        <mesh position={[0, 2.0, 0]} castShadow receiveShadow>
-          <cylinderGeometry args={[0.44, 0.44, 0.14, 28]} />
-          <meshStandardMaterial color={'#2a1616'} metalness={0.15} roughness={0.6} />
-        </mesh>
-        {/* central post */}
-        <mesh position={[0, 1.0, 0]} castShadow>
-          <cylinderGeometry args={[0.08, 0.1, 2.0, 14]} />
-          {mSteel}
-        </mesh>
-        {/* footrest ring */}
-        <mesh position={[0, 0.6, 0]} rotation={[Math.PI / 2, 0, 0]}>
-          <torusGeometry args={[0.34, 0.03, 8, 22]} />
-          {mSteelLt}
-        </mesh>
-        {/* flared base on the floor */}
-        <mesh position={[0, 0.06, 0]} castShadow receiveShadow>
-          <cylinderGeometry args={[0.48, 0.54, 0.1, 22]} />
-          {mSteel}
-        </mesh>
-      </group>
     </group>
   )
 }
