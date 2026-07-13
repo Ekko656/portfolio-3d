@@ -114,9 +114,10 @@ function Monitor({ position, rotation = [0, 0, 0], mode }: { position: [number, 
           toneMapped={false}
         />
       </mesh>
-      {/* cable dropping off the back toward the PC */}
-      <mesh position={[0, 0.2, -0.12]} rotation={[0.5, 0, 0]}>
-        <cylinderGeometry args={[0.018, 0.018, 0.5, 6]} />
+      {/* video/power cable exits the bottom-back of the panel (routed to the
+          dock by BenchClutter, so it actually connects to something) */}
+      <mesh position={[0.12, 0.4, -0.03]} castShadow>
+        <cylinderGeometry args={[0.016, 0.016, 0.12, 8]} />
         <meshStandardMaterial color={'#0d0d0f'} roughness={0.9} />
       </mesh>
       {mode === 'telemetry' && <pointLight position={[0, 0.79, 0.4]} intensity={0.5} distance={2.2} decay={2} color={'#2fd0c0'} />}
@@ -216,7 +217,8 @@ export default function Workstation() {
       <Monitor position={[-1.45, 0, -0.5]} rotation={[0, -0.16, 0]} mode="off" />
       <Keyboard position={[-2.15, 0, 0.6]} rotation={[0, 0.05, 0]} />
       <Mouse position={[-1.1, 0, 0.7]} />
-      <Connector position={[0.95, 0, 0.4]} rotation={[0, -0.5, 0]} />
+      {/* the off-monitor's loose cable + the dock are built in BenchClutter so
+          the whole cable run stays consistent in one place */}
     </group>
   )
 }

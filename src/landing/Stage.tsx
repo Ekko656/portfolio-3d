@@ -815,6 +815,83 @@ function tube(pts: [number, number, number][], r: number, color: string, key?: s
   )
 }
 
+/** A chunky two-prong plug that lies flat on the bench, easy for the gripper to
+ *  grab. Prongs point +Z, cable exits -Z. Body sits with its base on y=0. */
+function Plug({ position, rotation = [0, 0, 0], color = '#23252d' }: { position: [number, number, number]; rotation?: [number, number, number]; color?: string }) {
+  return (
+    <group position={position} rotation={rotation as unknown as THREE.Euler}>
+      {/* grabbable block body */}
+      <RoundedBox args={[0.09, 0.06, 0.12]} radius={0.018} smoothness={3} position={[0, 0.03, 0]} castShadow receiveShadow>
+        <meshStandardMaterial color={color} metalness={0.35} roughness={0.5} />
+      </RoundedBox>
+      {/* grip ribs on top */}
+      {[-0.02, 0, 0.02].map((z) => (
+        <mesh key={z} position={[0, 0.061, z]}>
+          <boxGeometry args={[0.07, 0.006, 0.008]} />
+          <meshStandardMaterial color={'#14151a'} roughness={0.7} />
+        </mesh>
+      ))}
+      {/* two flat prongs out the +Z face */}
+      {[-0.022, 0.022].map((x) => (
+        <mesh key={x} position={[x, 0.03, 0.085]} castShadow>
+          <boxGeometry args={[0.013, 0.03, 0.05]} />
+          <meshStandardMaterial color={'#c9ccd2'} metalness={0.9} roughness={0.25} />
+        </mesh>
+      ))}
+      {/* strain-relief boot + cable stub out the -Z face */}
+      <mesh position={[0, 0.03, -0.075]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+        <cylinderGeometry args={[0.022, 0.028, 0.04, 10]} />
+        <meshStandardMaterial color={'#101114'} roughness={0.85} />
+      </mesh>
+    </group>
+  )
+}
+
+/** A docking hub at the back of the bench: a row of ports the monitor/PC/printer
+ *  cables plug into. One port is left empty for the off-monitor's loose cable. */
+const DOCK_PORTS = [-0.18, -0.06, 0.06, 0.18] // local x of each port on the front face
+function Dock({ position }: { position: [number, number, number] }) {
+  const CASE = <meshStandardMaterial color={'#1b1d21'} metalness={0.5} roughness={0.42} />
+  return (
+    <group position={position}>
+      {/* body */}
+      <RoundedBox args={[0.52, 0.12, 0.24]} radius={0.02} smoothness={3} position={[0, 0.06, 0]} castShadow receiveShadow>{CASE}</RoundedBox>
+      {/* dark faceplate on the front (+Z) */}
+      <mesh position={[0, 0.06, 0.121]}>
+        <boxGeometry args={[0.5, 0.1, 0.004]} />
+        <meshStandardMaterial color={'#0e1013'} metalness={0.4} roughness={0.5} />
+      </mesh>
+      {/* each port = a recessed socket with two prong-holes */}
+      {DOCK_PORTS.map((x, i) => (
+        <group key={i}>
+          <mesh position={[x, 0.06, 0.12]}>
+            <boxGeometry args={[0.075, 0.045, 0.02]} />
+            <meshStandardMaterial color={'#070809'} roughness={0.7} />
+          </mesh>
+          {[-0.022, 0.022].map((dx) => (
+            <mesh key={dx} position={[x + dx, 0.06, 0.126]}>
+              <boxGeometry args={[0.016, 0.032, 0.01]} />
+              <meshStandardMaterial color={'#000'} roughness={0.9} />
+            </mesh>
+          ))}
+        </group>
+      ))}
+      {/* power LED */}
+      <mesh position={[0.225, 0.098, 0.122]}>
+        <boxGeometry args={[0.02, 0.012, 0.008]} />
+        <meshStandardMaterial color={'#7fffd0'} emissive={'#3fd6c4'} emissiveIntensity={2.4} toneMapped={false} />
+      </mesh>
+      {/* top vents */}
+      {[-0.12, -0.04, 0.04, 0.12].map((x) => (
+        <mesh key={x} position={[x, 0.121, -0.02]}>
+          <boxGeometry args={[0.02, 0.004, 0.15]} />
+          <meshStandardMaterial color={'#0a0b0d'} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
 /** A breadboard top: cream base, red/blue power rails, and a real hole grid. */
 function makeBreadboardTex() {
   const c = document.createElement('canvas')
@@ -846,55 +923,166 @@ function makeBreadboardTex() {
   return t
 }
 
+/** A dev-board top: green solder mask, copper traces, gold pads/vias, silkscreen. */
+function makePcbTex() {
+  const c = document.createElement('canvas')
+  c.width = 384
+  c.height = 264
+  const ctx = c.getContext('2d')!
+  ctx.fillStyle = '#0e4e30'
+  ctx.fillRect(0, 0, 384, 264)
+  // faint mask mottling
+  for (let i = 0; i < 700; i++) {
+    ctx.fillStyle = `rgba(${Math.random() > 0.5 ? '180,220,190' : '10,40,25'},${0.03 + Math.random() * 0.05})`
+    ctx.fillRect(Math.random() * 384, Math.random() * 264, 2, 1)
+  }
+  // copper traces — right-angled runs
+  ctx.strokeStyle = '#1f8a52'
+  ctx.lineWidth = 2.4
+  for (let i = 0; i < 46; i++) {
+    ctx.beginPath()
+    let x = Math.random() * 384, y = Math.random() * 264
+    ctx.moveTo(x, y)
+    for (let s = 0; s < 3; s++) {
+      if (Math.random() > 0.5) x += (Math.random() - 0.5) * 120
+      else y += (Math.random() - 0.5) * 120
+      ctx.lineTo(x, y)
+    }
+    ctx.stroke()
+  }
+  // gold pads + vias
+  for (let i = 0; i < 120; i++) {
+    const x = Math.random() * 384, y = Math.random() * 264
+    ctx.fillStyle = '#c9a24a'
+    ctx.beginPath(); ctx.arc(x, y, 2.6, 0, 7); ctx.fill()
+    ctx.fillStyle = '#0e4e30'
+    ctx.beginPath(); ctx.arc(x, y, 1.1, 0, 7); ctx.fill()
+  }
+  // white silkscreen: outlines + labels
+  ctx.strokeStyle = '#dfe3d6'
+  ctx.fillStyle = '#dfe3d6'
+  ctx.lineWidth = 1.4
+  ctx.strokeRect(232, 70, 96, 92)
+  ctx.strokeRect(60, 150, 60, 34)
+  ctx.strokeRect(150, 40, 40, 20)
+  ctx.font = 'bold 13px monospace'
+  ctx.fillText('U1', 236, 66)
+  ctx.font = '11px monospace'
+  ctx.fillText('R7', 60, 146)
+  ctx.fillText('C3', 152, 36)
+  ctx.fillText('SO-DEV rev.C', 30, 250)
+  const t = new THREE.CanvasTexture(c)
+  t.colorSpace = THREE.SRGBColorSpace
+  t.anisotropy = 4
+  return t
+}
+
+/** A pin header: black plastic base with short gold pins seated in it (no float). */
+function PinHeader({ position, rotation = [0, 0, 0], count = 8 }: { position: [number, number, number]; rotation?: [number, number, number]; count?: number }) {
+  const pitch = 0.03
+  const w = count * pitch
+  return (
+    <group position={position} rotation={rotation as unknown as THREE.Euler}>
+      {/* black plastic base */}
+      <mesh castShadow>
+        <boxGeometry args={[w, 0.022, 0.03]} />
+        <meshStandardMaterial color={'#0d0d10'} roughness={0.6} />
+      </mesh>
+      {/* pins seated in the base */}
+      {Array.from({ length: count }).map((_, i) => (
+        <mesh key={i} position={[-w / 2 + pitch / 2 + i * pitch, 0.026, 0]} castShadow>
+          <boxGeometry args={[0.008, 0.03, 0.008]} />
+          <meshStandardMaterial color={'#c9a24a'} metalness={0.9} roughness={0.3} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
 function BenchClutter() {
   const screws = useMemo(() => Array.from({ length: 24 }, () => [(Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * 0.4] as [number, number]), [])
   const bbTex = useMemo(makeBreadboardTex, [])
+  const pcbTex = useMemo(makePcbTex, [])
   return (
     <group position={[0, DESK_Y, 0]}>
-      {/* a real dev board the arm is working over */}
+      {/* a real dev board the arm is working over. Board top sits at local y≈0.015 */}
       <group position={[0.98, 0.02, 0.55]} rotation={[0, 0.3, 0]}>
-        <RoundedBox args={[0.82, 0.03, 0.56]} radius={0.01} smoothness={2} castShadow receiveShadow>
-          <meshStandardMaterial color={'#0f4a2c'} metalness={0.25} roughness={0.5} />
+        <RoundedBox args={[0.82, 0.03, 0.56]} radius={0.008} smoothness={2} castShadow receiveShadow>
+          <meshStandardMaterial color={'#0e4e30'} metalness={0.2} roughness={0.55} />
         </RoundedBox>
-        {/* main microcontroller IC + its legs */}
-        <mesh position={[0.02, 0.05, 0]} castShadow>
-          <boxGeometry args={[0.2, 0.05, 0.2]} />
-          <meshStandardMaterial color={'#0a0a0c'} metalness={0.4} roughness={0.45} />
+        {/* printed top: traces, pads, silkscreen */}
+        <mesh position={[0, 0.0165, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[0.8, 0.54]} />
+          <meshStandardMaterial map={pcbTex} roughness={0.55} metalness={0.15} />
         </mesh>
-        <mesh position={[-0.09, 0.055, -0.07]}>
-          <boxGeometry args={[0.02, 0.008, 0.02]} />
-          <meshStandardMaterial color={'#c9b070'} metalness={0.9} roughness={0.3} />
-        </mesh>
-        {/* header pin rows (gold) */}
-        {[-0.36, 0.36].map((z) =>
-          Array.from({ length: 12 }).map((_, i) => (
-            <mesh key={`${z}:${i}`} position={[-0.33 + i * 0.06, 0.06, z]}>
-              <boxGeometry args={[0.014, 0.06, 0.014]} />
-              <meshStandardMaterial color={'#c9b070'} metalness={0.9} roughness={0.28} />
-            </mesh>
-          )),
-        )}
-        {/* USB-C port */}
-        <mesh position={[-0.38, 0.05, 0]} castShadow>
-          <boxGeometry args={[0.09, 0.05, 0.11]} />
+        {/* main MCU: black QFP with gold leg rows on all four sides */}
+        <group position={[0.06, 0, -0.02]}>
+          <mesh position={[0, 0.032, 0]} castShadow>
+            <boxGeometry args={[0.17, 0.032, 0.17]} />
+            <meshStandardMaterial color={'#0a0a0c'} metalness={0.35} roughness={0.5} />
+          </mesh>
+          <mesh position={[-0.06, 0.048, -0.06]}>
+            <cylinderGeometry args={[0.012, 0.012, 0.002, 12]} />
+            <meshStandardMaterial color={'#26262a'} metalness={0.5} roughness={0.4} />
+          </mesh>
+          {[0, 1, 2, 3].map((side) =>
+            Array.from({ length: 8 }).map((_, i) => {
+              const o = -0.07 + i * 0.02
+              const along = side < 2 ? [o, 0.022, side === 0 ? -0.092 : 0.092] : [side === 2 ? -0.092 : 0.092, 0.022, o]
+              return (
+                <mesh key={`${side}:${i}`} position={along as [number, number, number]}>
+                  <boxGeometry args={side < 2 ? [0.008, 0.006, 0.02] : [0.02, 0.006, 0.008]} />
+                  <meshStandardMaterial color={'#c9ccd2'} metalness={0.9} roughness={0.3} />
+                </mesh>
+              )
+            }),
+          )}
+        </group>
+        {/* two seated pin headers along the long edges (no floating pins) */}
+        <PinHeader position={[-0.02, 0.026, -0.235]} count={12} />
+        <PinHeader position={[-0.02, 0.026, 0.235]} count={12} />
+        {/* USB-C port on the left edge */}
+        <mesh position={[-0.39, 0.03, 0]} castShadow>
+          <boxGeometry args={[0.07, 0.03, 0.1]} />
           <meshStandardMaterial color={'#8a8d92'} metalness={0.85} roughness={0.3} />
         </mesh>
-        {/* electrolytic caps + SMD bits */}
-        {[[-0.15, 0.12, '#2a3a6a'], [0.24, -0.14, '#1a1a20'], [0.3, 0.14, '#6a4a1a']].map(([x, z, c], i) => (
-          <mesh key={`cap${i}`} position={[x as number, 0.07, z as number]} castShadow>
-            <cylinderGeometry args={[0.04, 0.04, 0.1, 12]} />
-            <meshStandardMaterial color={c as string} metalness={0.3} roughness={0.45} />
-          </mesh>
+        <mesh position={[-0.41, 0.03, 0]}>
+          <boxGeometry args={[0.02, 0.02, 0.075]} />
+          <meshStandardMaterial color={'#050607'} roughness={0.7} />
+        </mesh>
+        {/* electrolytic caps (cylinders with a crimp top) */}
+        {[[-0.2, 0.13, '#243a6a'], [-0.26, -0.12, '#1a1a20']].map(([x, z, col], i) => (
+          <group key={`cap${i}`} position={[x as number, 0, z as number]}>
+            <mesh position={[0, 0.06, 0]} castShadow>
+              <cylinderGeometry args={[0.038, 0.038, 0.09, 14]} />
+              <meshStandardMaterial color={col as string} metalness={0.3} roughness={0.45} />
+            </mesh>
+            <mesh position={[0, 0.106, 0]}>
+              <cylinderGeometry args={[0.036, 0.036, 0.004, 14]} />
+              <meshStandardMaterial color={'#20242c'} metalness={0.5} roughness={0.4} />
+            </mesh>
+          </group>
         ))}
-        {[[-0.24, -0.05], [0.12, 0.2], [-0.02, -0.2]].map(([x, z], i) => (
-          <mesh key={`smd${i}`} position={[x, 0.04, z]}>
-            <boxGeometry args={[0.04, 0.02, 0.02]} />
-            <meshStandardMaterial color={'#c8a05a'} metalness={0.2} roughness={0.6} />
-          </mesh>
+        {/* SMD resistors with colour bands */}
+        {[[0.28, 0.16], [0.28, 0.1], [0.28, 0.04], [-0.02, 0.2]].map(([x, z], i) => (
+          <group key={`r${i}`} position={[x, 0.021, z]}>
+            <mesh castShadow><boxGeometry args={[0.03, 0.012, 0.016]} /><meshStandardMaterial color={'#0c0c0f'} roughness={0.5} /></mesh>
+            <mesh position={[0, 0.007, 0]}><boxGeometry args={[0.03, 0.001, 0.016]} /><meshStandardMaterial color={'#c9a24a'} metalness={0.6} roughness={0.4} /></mesh>
+          </group>
         ))}
+        {/* quartz crystal (silver can) */}
+        <mesh position={[-0.12, 0.028, -0.16]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+          <capsuleGeometry args={[0.022, 0.05, 4, 10]} />
+          <meshStandardMaterial color={'#b9bcc2'} metalness={0.85} roughness={0.3} />
+        </mesh>
+        {/* reset tact button */}
+        <group position={[0.34, 0, -0.14]}>
+          <mesh position={[0, 0.022, 0]} castShadow><boxGeometry args={[0.05, 0.03, 0.05]} /><meshStandardMaterial color={'#c8bfae'} roughness={0.5} /></mesh>
+          <mesh position={[0, 0.04, 0]} castShadow><cylinderGeometry args={[0.012, 0.012, 0.012, 12]} /><meshStandardMaterial color={'#1a1a1e'} roughness={0.5} /></mesh>
+        </group>
         {/* two status LEDs */}
-        <mesh position={[0.32, 0.045, -0.05]}><boxGeometry args={[0.02, 0.015, 0.02]} /><meshStandardMaterial color={'#7fffa0'} emissive={'#2fbf4a'} emissiveIntensity={2.5} toneMapped={false} /></mesh>
-        <mesh position={[0.32, 0.045, 0.0]}><boxGeometry args={[0.02, 0.015, 0.02]} /><meshStandardMaterial color={'#ffb0b0'} emissive={'#c93a3a'} emissiveIntensity={1.8} toneMapped={false} /></mesh>
+        <mesh position={[0.33, 0.024, -0.05]}><boxGeometry args={[0.02, 0.012, 0.02]} /><meshStandardMaterial color={'#7fffa0'} emissive={'#2fbf4a'} emissiveIntensity={2.5} toneMapped={false} /></mesh>
+        <mesh position={[0.33, 0.024, 0.0]}><boxGeometry args={[0.02, 0.012, 0.02]} /><meshStandardMaterial color={'#ffb0b0'} emissive={'#c93a3a'} emissiveIntensity={1.8} toneMapped={false} /></mesh>
       </group>
 
       {/* a servo motor (SO-101 style) + horn + ribbon cable */}
@@ -1004,27 +1192,20 @@ function BenchClutter() {
         {tube([[-0.02, 0.05, -0.04], [0.1, 0.09, -0.16], [0.2, 0.06, -0.12]], 0.012, '#2fae5a', 'jw3')}
       </group>
 
-      {/* power strip at the back with cables feeding the gear */}
-      <group position={[-0.3, 0.04, -1.4]}>
-        <mesh castShadow>
-          <boxGeometry args={[1.4, 0.08, 0.18]} />
-          <meshStandardMaterial color={'#17181c'} metalness={0.3} roughness={0.6} />
-        </mesh>
-        {[-0.5, -0.2, 0.1, 0.4].map((x) => (
-          <mesh key={x} position={[x, 0.045, 0]}>
-            <boxGeometry args={[0.12, 0.02, 0.1]} />
-            <meshStandardMaterial color={'#0a0a0c'} metalness={0.4} roughness={0.5} />
-          </mesh>
-        ))}
-        <mesh position={[0.6, 0.05, 0]}>
-          <boxGeometry args={[0.04, 0.02, 0.02]} />
-          <meshStandardMaterial color={'#3fd6c4'} emissive={'#1a6a64'} emissiveIntensity={1.5} toneMapped={false} />
-        </mesh>
-      </group>
-      {/* routed cables: monitors + printer -> power strip */}
-      {tube([[-2.9, 0.02, -1.15], [-2.2, 0.03, -1.35], [-1.1, 0.03, -1.4], [-0.9, 0.05, -1.4]], 0.022, '#101012', 'w1')}
-      {tube([[2.7, 0.02, -0.6], [1.5, 0.03, -1.2], [0.2, 0.04, -1.4]], 0.022, '#101012', 'w2')}
-      {tube([[0.3, 0.05, -1.5], [0.6, 0.02, -1.65], [1.5, -0.9, -1.7]], 0.03, '#0c0c0e', 'w3')}
+      {/* the dock at the back of the bench — everything plugs into it. Ports
+          (local x, dock at x=0.1): -0.08 telemetry, 0.04 printer, 0.16 spare,
+          0.28 = the EMPTY target for the off-monitor's loose plug. */}
+      <Dock position={[0.1, 0, -0.72]} />
+      {/* telemetry monitor: cable -> seated plug in port 0 (clearly plugged in) */}
+      <Plug position={[-0.08, 0, -0.53]} rotation={[0, Math.PI, 0]} />
+      {tube([[-3.05, 0.05, -0.64], [-2.1, 0.05, -0.78], [-1.0, 0.05, -0.72], [-0.4, 0.05, -0.56], [-0.08, 0.045, -0.45]], 0.018, '#0d0d0f', 'cbl_tele')}
+      {/* 3D printer: cable -> seated plug in port 1 */}
+      <Plug position={[0.04, 0, -0.53]} rotation={[0, Math.PI, 0]} />
+      {tube([[2.5, 0.05, -0.5], [1.5, 0.05, -0.74], [0.6, 0.05, -0.62], [0.24, 0.05, -0.5], [0.04, 0.045, -0.45]], 0.018, '#0d0d0f', 'cbl_prn')}
+      {/* off monitor: cable runs forward to its LOOSE plug near the arm
+          (unplugged — waiting to go into the empty port; this is About) */}
+      <Plug position={[0.5, 0, 0.42]} rotation={[0, -2.5, 0]} color={'#2a2c34'} />
+      {tube([[-1.45, 0.05, -0.62], [-0.75, 0.05, -0.2], [-0.1, 0.05, 0.12], [0.28, 0.05, 0.34], [0.44, 0.05, 0.44]], 0.018, '#0d0d0f', 'cbl_off')}
     </group>
   )
 }
