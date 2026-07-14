@@ -161,15 +161,6 @@ function Keyboard({ position, rotation = [0, 0, 0] }: { position: [number, numbe
 }
 
 function Mouse({ position }: { position: [number, number, number] }) {
-  const cable = useMemo(() => {
-    const curve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(0, 0.04, -0.15),
-      new THREE.Vector3(0.03, 0.03, -0.32),
-      new THREE.Vector3(-0.04, 0.03, -0.5),
-      new THREE.Vector3(0.02, 0.03, -0.68),
-    ])
-    return new THREE.TubeGeometry(curve, 40, 0.008, 6)
-  }, [])
   const SHELL = <meshStandardMaterial color={'#191b21'} metalness={0.22} roughness={0.48} />
   return (
     <group position={position}>
@@ -214,10 +205,6 @@ function Mouse({ position }: { position: [number, number, number] }) {
       <mesh position={[0, 0.02, 0]} scale={[1, 0.16, 1.62]}>
         <sphereGeometry args={[0.101, 24, 8]} />
         <meshStandardMaterial color={'#2fd0c0'} emissive={'#1f8f86'} emissiveIntensity={0.7} toneMapped={false} transparent opacity={0.55} />
-      </mesh>
-      {/* braided cable trailing off toward the dock */}
-      <mesh geometry={cable} castShadow>
-        <meshStandardMaterial color={'#101014'} roughness={0.85} />
       </mesh>
     </group>
   )

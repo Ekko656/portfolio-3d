@@ -936,11 +936,11 @@ function ChargingBlock({ position, rotation = [0, 0, 0], color = '#24262d' }: { 
 /** A North-American (Canadian) duplex wall outlet: ivory cover plate + two
  *  receptacles, each with two blade slots and a round ground hole. Faces +Z. */
 function CanadianOutlet({ position, rotation = [0, 0, 0] }: { position: [number, number, number]; rotation?: [number, number, number] }) {
-  const IVORY = <meshStandardMaterial color={'#e6e1d4'} roughness={0.6} />
+  const IVORY = <meshStandardMaterial color={'#e6e1d4'} roughness={0.6} emissive={'#4a4436'} emissiveIntensity={0.35} />
   const HOLE = <meshStandardMaterial color={'#050505'} roughness={0.95} />
   return (
     <group position={position} rotation={rotation as unknown as THREE.Euler}>
-      {/* cover plate */}
+      {/* cover plate (faintly self-lit so it reads in the under-desk shadow) */}
       <RoundedBox args={[0.17, 0.3, 0.016]} radius={0.012} smoothness={2} castShadow receiveShadow>{IVORY}</RoundedBox>
       {/* centre mounting screw */}
       <mesh position={[0, 0, 0.011]} rotation={[Math.PI / 2, 0, 0]}>
@@ -1217,8 +1217,8 @@ function BenchClutter() {
         {tube([[-0.06, 0.03, -0.035], [-0.16, 0.02, -0.12], [-0.28, 0.02, -0.14]], 0.01, '#4a2e1a', 'svlead')}
       </group>
 
-      {/* an open compartment parts bin (clear of the board), sorted hardware */}
-      <group position={[1.85, 0.02, 0.82]} rotation={[0, -0.35, 0]}>
+      {/* an open compartment parts bin (well clear of the board + iron) */}
+      <group position={[1.82, 0.02, 0.48]} rotation={[0, -0.2, 0]}>
         {/* floor + four walls */}
         <mesh position={[0, 0.008, 0]} receiveShadow><boxGeometry args={[0.52, 0.016, 0.38]} /><meshStandardMaterial color={'#3a3d45'} metalness={0.4} roughness={0.5} /></mesh>
         {[[0, 0.038, 0.185, 0.52, 0.056, 0.02], [0, 0.038, -0.185, 0.52, 0.056, 0.02], [0.26, 0.038, 0, 0.02, 0.056, 0.39], [-0.26, 0.038, 0, 0.02, 0.056, 0.39]].map((w, i) => (
@@ -1256,7 +1256,7 @@ function BenchClutter() {
       </group>
 
       {/* soldering iron in a stand + brass sponge + solder spool */}
-      <group position={[2.0, 0.02, 0.9]}>
+      <group position={[2.55, 0.02, 0.82]}>
         <mesh castShadow>
           <boxGeometry args={[0.4, 0.05, 0.28]} />
           <meshStandardMaterial color={'#20222a'} metalness={0.4} roughness={0.5} />
@@ -1326,24 +1326,28 @@ function BenchClutter() {
         {tube([[-0.02, 0.05, -0.04], [0.1, 0.09, -0.16], [0.2, 0.06, -0.12]], 0.012, '#2fae5a', 'jw3')}
       </group>
 
-      {/* the power hub. Sockets (local x, dock at x=0.1): -0.07 telemetry
-          (a charger plugged in), 0.1 middle (the empty target the arm plugs the
-          off-monitor charger into for About), 0.27 spare. */}
+      {/* the power hub (arm-reachable). Keep-out footprints used for routing:
+          off-monitor base x[-1.76,-1.14] z[-0.64,-0.32]; telemetry base
+          x[-3.36,-2.74] z[-0.64,-0.32]; mouse x[-1.2,-1.0] z[0.54,0.86]; the
+          dock x[-0.18,0.38] z[-0.85,-0.59]. */}
       <Dock position={[0.1, 0, -0.72]} />
-      {/* dock -> a Canadian wall outlet mounted under the desk (so it goes
-          somewhere). Cord runs off the back edge and drops down the wall. */}
-      <CanadianOutlet position={[0.55, -1.8, -1.78]} />
-      {tube([[0.1, 0.06, -0.85], [0.28, 0.04, -1.2], [0.42, 0.05, -1.55], [0.5, -0.1, -1.72], [0.55, -0.9, -1.76], [0.55, -1.62, -1.78]], 0.02, '#0c0c0e', 'cbl_pwr')}
-      {/* the 3-prong plug seated in the outlet */}
-      <mesh position={[0.55, -1.72, -1.72]} castShadow><boxGeometry args={[0.075, 0.09, 0.05]} /><meshStandardMaterial color={'#1a1b20'} roughness={0.6} /></mesh>
-      {/* TELEMETRY monitor: its charger is plugged into the dock; cable drapes
-          up behind the monitor (clear of the base). */}
+      {/* dock power cord -> a Canadian outlet on the wall under the desk, with a
+          3-prong plug seated in it (drops in the gap behind the bench). */}
+      <CanadianOutlet position={[-0.5, -1.0, -1.42]} />
+      {/* the dock's 3-prong plug seated in the lower receptacle */}
+      <mesh position={[-0.5, -1.075, -1.36]} castShadow><boxGeometry args={[0.085, 0.1, 0.055]} /><meshStandardMaterial color={'#17181d'} roughness={0.6} /></mesh>
+      {/* a soft grazing fill so the outlet + cord read in the under-desk shadow */}
+      <pointLight position={[-0.22, -0.82, -1.18]} intensity={0.45} distance={1.0} decay={2} color={'#ffe0b8'} />
+      {tube([[0.1, 0.06, -0.86], [-0.04, 0.04, -1.1], [-0.18, 0.02, -1.34], [-0.32, -0.22, -1.42], [-0.45, -0.72, -1.4], [-0.5, -0.95, -1.38]], 0.02, '#0c0c0e', 'cbl_pwr')}
+      {/* TELEMETRY monitor's charger, plugged into the dock; cable runs along the
+          back (z < -0.72, behind every base) to the monitor, then up its back. */}
       <ChargingBlock position={[-0.07, 0, -0.52]} rotation={[0, Math.PI, 0]} />
-      {tube([[-2.9, 0.4, -0.56], [-2.92, 0.16, -0.72], [-2.6, 0.04, -0.84], [-2.05, 0.05, -0.78], [-1.55, 0.04, -0.86], [-1.0, 0.05, -0.79], [-0.5, 0.04, -0.7], [-0.18, 0.05, -0.55], [-0.07, 0.05, -0.44]], 0.016, '#101014', 'cbl_tele')}
-      {/* OFF monitor: its charger is UNPLUGGED, sitting in the open near the arm.
-          Cable drapes down behind the base, out around it, then forward. */}
+      {tube([[-0.07, 0.05, -0.42], [-0.28, 0.05, -0.52], [-0.52, 0.045, -0.74], [-0.95, 0.05, -0.8], [-1.45, 0.045, -0.82], [-2.0, 0.05, -0.79], [-2.5, 0.045, -0.83], [-2.85, 0.16, -0.72], [-2.9, 0.4, -0.56]], 0.016, '#101014', 'cbl_tele')}
+      {/* OFF monitor's charger, UNPLUGGED in the open near the arm. Cable drops
+          behind its base, comes out to the RIGHT of the base + mouse, then waves
+          forward to the charger (never over the base or the mouse). */}
       <ChargingBlock position={[-0.42, 0, 0.92]} rotation={[0, 1.5, 0]} />
-      {tube([[-1.33, 0.4, -0.56], [-1.5, 0.14, -0.74], [-1.82, 0.04, -0.58], [-1.78, 0.04, -0.05], [-1.5, 0.05, 0.32], [-1.12, 0.04, 0.62], [-0.72, 0.05, 0.86], [-0.5, 0.05, 0.93]], 0.016, '#101014', 'cbl_off')}
+      {tube([[-1.33, 0.4, -0.55], [-1.33, 0.13, -0.72], [-1.18, 0.05, -0.73], [-0.95, 0.05, -0.6], [-0.85, 0.045, -0.28], [-0.72, 0.05, 0.05], [-0.78, 0.045, 0.35], [-0.6, 0.05, 0.58], [-0.62, 0.045, 0.78], [-0.47, 0.05, 0.9]], 0.016, '#101014', 'cbl_off')}
     </group>
   )
 }
