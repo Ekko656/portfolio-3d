@@ -1255,26 +1255,68 @@ function BenchClutter() {
         <mesh position={[0.2, 0.04, 0.14]} castShadow><cylinderGeometry args={[0.016, 0.016, 0.035, 12]} /><meshStandardMaterial color={'#243a6a'} roughness={0.45} /></mesh>
       </group>
 
-      {/* soldering iron in a stand + brass sponge + solder spool */}
-      <group position={[2.55, 0.02, 0.82]}>
-        <mesh castShadow>
-          <boxGeometry args={[0.4, 0.05, 0.28]} />
-          <meshStandardMaterial color={'#20222a'} metalness={0.4} roughness={0.5} />
-        </mesh>
-        <mesh position={[-0.05, 0.18, 0]} rotation={[0, 0, 0.5]}>
-          <torusGeometry args={[0.11, 0.012, 6, 14, Math.PI * 1.2]} />
-          <meshStandardMaterial color={'#4a4d53'} metalness={0.7} roughness={0.4} />
-        </mesh>
-        <group position={[0.1, 0.16, 0.02]} rotation={[0, 0, -0.55]}>
-          <mesh castShadow>
-            <cylinderGeometry args={[0.03, 0.03, 0.3, 10]} />
-            <meshStandardMaterial color={'#8a2a2a'} metalness={0.2} roughness={0.5} />
-          </mesh>
-          <mesh position={[0, 0.22, 0]} castShadow>
-            <cylinderGeometry args={[0.012, 0.006, 0.16, 8]} />
-            <meshStandardMaterial color={'#6a6a70'} metalness={0.8} roughness={0.3} />
-          </mesh>
+      {/* a temperature-controlled soldering station (Weller-style): teal power
+          unit + a black holder tray with the iron resting in its cradle */}
+      <group position={[2.62, 0.02, 0.82]} rotation={[0, -0.4, 0]}>
+        {/* ---- power unit ---- */}
+        <group position={[-0.27, 0, 0]}>
+          <RoundedBox args={[0.3, 0.24, 0.28]} radius={0.018} smoothness={3} position={[0, 0.12, 0]} castShadow receiveShadow>
+            <meshStandardMaterial color={'#4fbccb'} metalness={0.1} roughness={0.5} />
+          </RoundedBox>
+          {/* cooling fins across the top */}
+          {[-0.1, -0.06, -0.02, 0.02, 0.06].map((z) => (
+            <mesh key={z} position={[-0.06, 0.242, z]}><boxGeometry args={[0.14, 0.006, 0.012]} /><meshStandardMaterial color={'#2c8894'} roughness={0.6} /></mesh>
+          ))}
+          {/* black control panel on the front */}
+          <mesh position={[0, 0.11, 0.141]}><boxGeometry args={[0.26, 0.17, 0.014]} /><meshStandardMaterial color={'#141519'} roughness={0.5} /></mesh>
+          {/* power rocker switch */}
+          <mesh position={[-0.085, 0.13, 0.15]} rotation={[0.25, 0, 0]} castShadow><boxGeometry args={[0.032, 0.05, 0.016]} /><meshStandardMaterial color={'#2a2c31'} roughness={0.5} /></mesh>
+          {/* temperature dial + pointer */}
+          <mesh position={[0.055, 0.13, 0.15]} rotation={[Math.PI / 2, 0, 0]} castShadow><cylinderGeometry args={[0.045, 0.045, 0.022, 20]} /><meshStandardMaterial color={'#0d0d10'} roughness={0.45} /></mesh>
+          <mesh position={[0.055, 0.152, 0.162]}><boxGeometry args={[0.006, 0.024, 0.006]} /><meshStandardMaterial color={'#dcdce0'} /></mesh>
+          {/* small knob + power LED */}
+          <mesh position={[-0.085, 0.06, 0.15]} rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[0.02, 0.02, 0.02, 14]} /><meshStandardMaterial color={'#0d0d10'} roughness={0.45} /></mesh>
+          <mesh position={[0.095, 0.06, 0.15]}><boxGeometry args={[0.012, 0.012, 0.008]} /><meshStandardMaterial color={'#ff6a4a'} emissive={'#c02010'} emissiveIntensity={2.2} toneMapped={false} /></mesh>
+          {/* solder-wire spool on a post on top */}
+          <mesh position={[-0.04, 0.26, -0.04]}><boxGeometry args={[0.012, 0.06, 0.012]} /><meshStandardMaterial color={'#3a3d43'} metalness={0.6} roughness={0.4} /></mesh>
+          <group position={[-0.04, 0.29, -0.04]} rotation={[Math.PI / 2, 0, 0]}>
+            <mesh castShadow><cylinderGeometry args={[0.065, 0.065, 0.028, 20]} /><meshStandardMaterial color={'#c9ccd2'} metalness={0.55} roughness={0.4} /></mesh>
+            {[-0.017, 0.017].map((z) => (
+              <mesh key={z} position={[0, 0, z]}><cylinderGeometry args={[0.07, 0.07, 0.004, 20]} /><meshStandardMaterial color={'#2c8894'} roughness={0.5} /></mesh>
+            ))}
+            <mesh><cylinderGeometry args={[0.018, 0.018, 0.05, 12]} /><meshStandardMaterial color={'#5a5d63'} metalness={0.5} /></mesh>
+          </group>
         </group>
+
+        {/* ---- iron holder tray ---- */}
+        <group position={[0.23, 0, 0.02]}>
+          <RoundedBox args={[0.42, 0.028, 0.22]} radius={0.008} smoothness={2} position={[0, 0.014, 0]} castShadow receiveShadow><meshStandardMaterial color={'#101114'} roughness={0.6} /></RoundedBox>
+          {/* brass cleaning sponge in a recessed well */}
+          <mesh position={[0.11, 0.035, 0]} castShadow><boxGeometry args={[0.14, 0.028, 0.13]} /><meshStandardMaterial color={'#b89a3a'} roughness={0.9} /></mesh>
+          {/* funnel cradle (open cone) on a post, angled up */}
+          <mesh position={[-0.13, 0.05, 0]}><boxGeometry args={[0.015, 0.07, 0.02]} /><meshStandardMaterial color={'#3a3d43'} metalness={0.6} roughness={0.45} /></mesh>
+          <mesh position={[-0.1, 0.1, 0]} rotation={[0, 0, 0.55]} castShadow>
+            <cylinderGeometry args={[0.05, 0.032, 0.1, 16, 1, true]} />
+            <meshStandardMaterial color={'#3a3d43'} metalness={0.7} roughness={0.4} side={THREE.DoubleSide} />
+          </mesh>
+          {/* the iron, resting angled in the cradle */}
+          <group position={[-0.03, 0.13, 0]} rotation={[0, 0, 0.55]}>
+            <mesh castShadow><cylinderGeometry args={[0.026, 0.03, 0.15, 16]} /><meshStandardMaterial color={'#1a1b20'} roughness={0.5} /></mesh>
+            {[-0.03, 0.0, 0.03].map((y) => (
+              <mesh key={y} position={[0, y, 0]}><cylinderGeometry args={[0.031, 0.031, 0.007, 16]} /><meshStandardMaterial color={'#0c0c0f'} roughness={0.6} /></mesh>
+            ))}
+            {/* blue heat-shrink collar */}
+            <mesh position={[0, 0.095, 0]} castShadow><cylinderGeometry args={[0.022, 0.025, 0.05, 16]} /><meshStandardMaterial color={'#2a4aa0'} roughness={0.45} /></mesh>
+            {/* metal barrel + crimp nut + conical tip */}
+            <mesh position={[0, 0.14, 0]} castShadow><cylinderGeometry args={[0.013, 0.013, 0.06, 12]} /><meshStandardMaterial color={'#8a8d92'} metalness={0.85} roughness={0.3} /></mesh>
+            <mesh position={[0, 0.115, 0]}><cylinderGeometry args={[0.02, 0.02, 0.014, 6]} /><meshStandardMaterial color={'#6a6d73'} metalness={0.7} roughness={0.4} /></mesh>
+            <mesh position={[0, 0.185, 0]} castShadow><coneGeometry args={[0.011, 0.045, 12]} /><meshStandardMaterial color={'#4a4d53'} metalness={0.7} roughness={0.4} /></mesh>
+          </group>
+        </group>
+        {/* iron lead from the back of the handle to the station */}
+        {tube([[0.14, 0.07, 0.02], [0.02, 0.03, -0.05], [-0.12, 0.05, -0.07], [-0.24, 0.09, -0.06]], 0.011, '#141519', 'ironcbl')}
+        {/* station power cord off the back */}
+        {tube([[-0.27, 0.03, -0.15], [-0.32, 0.02, -0.35], [-0.24, 0.02, -0.55]], 0.014, '#0c0c0e', 'solpwr')}
       </group>
 
       {/* real robotics parts by the monitors (far left) — pulled clear of the keyboard */}
