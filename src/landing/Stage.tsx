@@ -849,80 +849,156 @@ function Plug({ position, rotation = [0, 0, 0], color = '#23252d' }: { position:
 
 /** A docking hub at the back of the bench: a row of ports the monitor/PC/printer
  *  cables plug into. One port is left empty for the off-monitor's loose cable. */
-const DOCK_PORTS = [-0.18, -0.06, 0.06, 0.18] // local x of each port on the front face
+// prong x-offset shared by the charger and the dock sockets so they line up
+const PRONG_DX = 0.03
+// local x of each charger socket on the dock's front face (0 = middle target)
+const DOCK_PORTS = [-0.17, 0, 0.17]
+/** A multi-outlet power hub sized for the two-prong chargers. Sockets face +Z. */
 function Dock({ position }: { position: [number, number, number] }) {
-  const CASE = <meshStandardMaterial color={'#1b1d21'} metalness={0.5} roughness={0.42} />
+  const CASE = <meshStandardMaterial color={'#202228'} metalness={0.4} roughness={0.45} />
   return (
     <group position={position}>
       {/* body */}
-      <RoundedBox args={[0.52, 0.12, 0.24]} radius={0.02} smoothness={3} position={[0, 0.06, 0]} castShadow receiveShadow>{CASE}</RoundedBox>
-      {/* dark faceplate on the front (+Z) */}
-      <mesh position={[0, 0.06, 0.121]}>
-        <boxGeometry args={[0.5, 0.1, 0.004]} />
-        <meshStandardMaterial color={'#0e1013'} metalness={0.4} roughness={0.5} />
+      <RoundedBox args={[0.56, 0.14, 0.26]} radius={0.022} smoothness={3} position={[0, 0.07, 0]} castShadow receiveShadow>{CASE}</RoundedBox>
+      {/* recessed faceplate on the front (+Z) */}
+      <mesh position={[0, 0.07, 0.131]}>
+        <boxGeometry args={[0.54, 0.12, 0.006]} />
+        <meshStandardMaterial color={'#0e1013'} metalness={0.35} roughness={0.5} />
       </mesh>
-      {/* each port = a recessed socket with two prong-holes */}
+      {/* each socket = a recessed well with two prong-slots (charger-sized) */}
       {DOCK_PORTS.map((x, i) => (
         <group key={i}>
-          <mesh position={[x, 0.06, 0.12]}>
-            <boxGeometry args={[0.075, 0.045, 0.02]} />
-            <meshStandardMaterial color={'#070809'} roughness={0.7} />
+          <mesh position={[x, 0.07, 0.126]}>
+            <boxGeometry args={[0.12, 0.075, 0.026]} />
+            <meshStandardMaterial color={'#08090a'} roughness={0.7} />
           </mesh>
-          {[-0.022, 0.022].map((dx) => (
-            <mesh key={dx} position={[x + dx, 0.06, 0.126]}>
-              <boxGeometry args={[0.016, 0.032, 0.01]} />
-              <meshStandardMaterial color={'#000'} roughness={0.9} />
+          {[-PRONG_DX, PRONG_DX].map((dx) => (
+            <mesh key={dx} position={[x + dx, 0.07, 0.132]}>
+              <boxGeometry args={[0.02, 0.05, 0.012]} />
+              <meshStandardMaterial color={'#000'} roughness={0.95} />
             </mesh>
           ))}
         </group>
       ))}
-      {/* power LED */}
-      <mesh position={[0.225, 0.098, 0.122]}>
-        <boxGeometry args={[0.02, 0.012, 0.008]} />
+      {/* power LED + a brand slit */}
+      <mesh position={[0.25, 0.118, 0.132]}>
+        <boxGeometry args={[0.022, 0.012, 0.008]} />
         <meshStandardMaterial color={'#7fffd0'} emissive={'#3fd6c4'} emissiveIntensity={2.4} toneMapped={false} />
       </mesh>
       {/* top vents */}
-      {[-0.12, -0.04, 0.04, 0.12].map((x) => (
-        <mesh key={x} position={[x, 0.121, -0.02]}>
-          <boxGeometry args={[0.02, 0.004, 0.15]} />
+      {[-0.14, -0.05, 0.04, 0.13].map((x) => (
+        <mesh key={x} position={[x, 0.141, -0.02]}>
+          <boxGeometry args={[0.022, 0.004, 0.17]} />
           <meshStandardMaterial color={'#0a0b0d'} />
         </mesh>
       ))}
     </group>
   )
 }
-
-/** A chunky white power brick (Apple-charger sized): two flat prongs on the +Z
- *  face, the output cable exits the -Z face. Sits with its base on y=0. */
-function ChargingBlock({ position, rotation = [0, 0, 0] }: { position: [number, number, number]; rotation?: [number, number, number] }) {
+/** A chunky two-prong power brick: two flat prongs on the +Z face, cable out the
+ *  -Z face, a small charge LED. Sits with its base on y=0. */
+function ChargingBlock({ position, rotation = [0, 0, 0], color = '#24262d' }: { position: [number, number, number]; rotation?: [number, number, number]; color?: string }) {
   return (
     <group position={position} rotation={rotation as unknown as THREE.Euler}>
-      {/* white brick body */}
-      <RoundedBox args={[0.16, 0.16, 0.18]} radius={0.028} smoothness={4} position={[0, 0.08, 0]} castShadow receiveShadow>
-        <meshStandardMaterial color={'#f1efe9'} roughness={0.42} metalness={0.04} />
+      {/* brick body */}
+      <RoundedBox args={[0.135, 0.135, 0.155]} radius={0.024} smoothness={4} position={[0, 0.0675, 0]} castShadow receiveShadow>
+        <meshStandardMaterial color={color} roughness={0.5} metalness={0.15} />
       </RoundedBox>
-      {/* faint moulding seam around the middle */}
-      <mesh position={[0, 0.08, 0]}>
-        <boxGeometry args={[0.163, 0.003, 0.183]} />
-        <meshStandardMaterial color={'#d6d3cb'} roughness={0.5} />
+      {/* faint moulding seam + a small charge LED */}
+      <mesh position={[0, 0.0675, 0]}>
+        <boxGeometry args={[0.138, 0.0025, 0.158]} />
+        <meshStandardMaterial color={'#15161b'} roughness={0.6} />
+      </mesh>
+      <mesh position={[0.045, 0.0675, 0.079]}>
+        <boxGeometry args={[0.014, 0.008, 0.004]} />
+        <meshStandardMaterial color={'#8effc0'} emissive={'#2fbf6a'} emissiveIntensity={2} toneMapped={false} />
       </mesh>
       {/* two flat prongs on the +Z face */}
-      {[-0.032, 0.032].map((x) => (
-        <mesh key={x} position={[x, 0.08, 0.108]} castShadow>
-          <boxGeometry args={[0.017, 0.045, 0.055]} />
+      {[-PRONG_DX, PRONG_DX].map((x) => (
+        <mesh key={x} position={[x, 0.0675, 0.093]} castShadow>
+          <boxGeometry args={[0.016, 0.042, 0.05]} />
           <meshStandardMaterial color={'#c4c7cd'} metalness={0.9} roughness={0.25} />
         </mesh>
       ))}
       {/* recessed cable socket + strain-relief boot on the -Z face */}
-      <mesh position={[0, 0.055, -0.091]}>
-        <boxGeometry args={[0.05, 0.024, 0.008]} />
+      <mesh position={[0, 0.05, -0.079]}>
+        <boxGeometry args={[0.045, 0.022, 0.008]} />
         <meshStandardMaterial color={'#0e0e11'} roughness={0.6} />
       </mesh>
-      <mesh position={[0, 0.055, -0.105]} rotation={[Math.PI / 2, 0, 0]} castShadow>
-        <cylinderGeometry args={[0.014, 0.02, 0.03, 10]} />
-        <meshStandardMaterial color={'#e8e6e0'} roughness={0.6} />
+      <mesh position={[0, 0.05, -0.093]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+        <cylinderGeometry args={[0.013, 0.018, 0.028, 10]} />
+        <meshStandardMaterial color={'#1a1b20'} roughness={0.7} />
       </mesh>
     </group>
+  )
+}
+
+/** A North-American (Canadian) duplex wall outlet: ivory cover plate + two
+ *  receptacles, each with two blade slots and a round ground hole. Faces +Z. */
+function CanadianOutlet({ position, rotation = [0, 0, 0] }: { position: [number, number, number]; rotation?: [number, number, number] }) {
+  const IVORY = <meshStandardMaterial color={'#e6e1d4'} roughness={0.6} />
+  const HOLE = <meshStandardMaterial color={'#050505'} roughness={0.95} />
+  return (
+    <group position={position} rotation={rotation as unknown as THREE.Euler}>
+      {/* cover plate */}
+      <RoundedBox args={[0.17, 0.3, 0.016]} radius={0.012} smoothness={2} castShadow receiveShadow>{IVORY}</RoundedBox>
+      {/* centre mounting screw */}
+      <mesh position={[0, 0, 0.011]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.009, 0.009, 0.006, 10]} />
+        <meshStandardMaterial color={'#b9a86a'} metalness={0.6} roughness={0.4} />
+      </mesh>
+      {[0.075, -0.075].map((y) => (
+        <group key={y} position={[0, y, 0.009]}>
+          {/* raised receptacle face */}
+          <RoundedBox args={[0.09, 0.12, 0.008]} radius={0.03} smoothness={3}>{IVORY}</RoundedBox>
+          {/* two vertical blade slots */}
+          {[-0.02, 0.02].map((x) => (
+            <mesh key={x} position={[x, 0.022, 0.006]}><boxGeometry args={[0.007, 0.03, 0.006]} />{HOLE}</mesh>
+          ))}
+          {/* round ground hole below */}
+          <mesh position={[0, -0.032, 0.006]} rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.009, 0.009, 0.006, 10]} />{HOLE}
+          </mesh>
+        </group>
+      ))}
+    </group>
+  )
+}
+
+// ---- little hardware pieces for the parts bin -------------------------------
+const METAL_LT = <meshStandardMaterial color={'#9a9da3'} metalness={0.8} roughness={0.35} />
+const METAL_DK = <meshStandardMaterial color={'#6a6d73'} metalness={0.75} roughness={0.4} />
+const BRASS = <meshStandardMaterial color={'#c9a24a'} metalness={0.8} roughness={0.35} />
+
+/** A screw lying flat: hex head + threaded shaft + pointed tip (along local Z). */
+function Screw({ position, rotation = [0, 0, 0], len = 0.05, mat = METAL_LT }: { position: [number, number, number]; rotation?: [number, number, number]; len?: number; mat?: React.ReactNode }) {
+  return (
+    <group position={position} rotation={rotation as unknown as THREE.Euler}>
+      <mesh rotation={[Math.PI / 2, 0, 0]} castShadow><cylinderGeometry args={[0.0055, 0.0055, len, 8]} />{mat}</mesh>
+      {/* thread ridges */}
+      {Array.from({ length: Math.round(len / 0.008) }).map((_, i) => (
+        <mesh key={i} position={[0, 0, -len / 2 + 0.006 + i * 0.008]} rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[0.0068, 0.0068, 0.002, 8]} />{mat}</mesh>
+      ))}
+      <mesh position={[0, 0, len / 2 + 0.005]} rotation={[Math.PI / 2, 0, 0]} castShadow><cylinderGeometry args={[0.013, 0.013, 0.011, 6]} />{mat}</mesh>
+      <mesh position={[0, 0, -len / 2 - 0.006]} rotation={[-Math.PI / 2, 0, 0]}><coneGeometry args={[0.0055, 0.012, 8]} />{mat}</mesh>
+    </group>
+  )
+}
+/** A hex nut lying flat (hole up). */
+function Nut({ position, rotation = [0, 0, 0], mat = METAL_LT }: { position: [number, number, number]; rotation?: [number, number, number]; mat?: React.ReactNode }) {
+  return (
+    <group position={position} rotation={rotation as unknown as THREE.Euler}>
+      <mesh castShadow><cylinderGeometry args={[0.015, 0.015, 0.009, 6]} />{mat}</mesh>
+      <mesh><cylinderGeometry args={[0.0075, 0.0075, 0.011, 12]} /><meshStandardMaterial color={'#0a0a0a'} /></mesh>
+    </group>
+  )
+}
+/** A flat washer lying on the surface. */
+function Washer({ position, rotation = [0, 0, 0], mat = METAL_LT }: { position: [number, number, number]; rotation?: [number, number, number]; mat?: React.ReactNode }) {
+  return (
+    <mesh position={position} rotation={[Math.PI / 2, rotation[1], 0]} castShadow>
+      <torusGeometry args={[0.013, 0.0035, 6, 16]} />{mat}
+    </mesh>
   )
 }
 
@@ -1141,26 +1217,42 @@ function BenchClutter() {
         {tube([[-0.06, 0.03, -0.035], [-0.16, 0.02, -0.12], [-0.28, 0.02, -0.14]], 0.01, '#4a2e1a', 'svlead')}
       </group>
 
-      {/* an open compartment parts bin with screws resting inside */}
-      <group position={[1.55, 0.02, 0.68]}>
+      {/* an open compartment parts bin (clear of the board), sorted hardware */}
+      <group position={[1.85, 0.02, 0.82]} rotation={[0, -0.35, 0]}>
         {/* floor + four walls */}
-        <mesh position={[0, 0.008, 0]} receiveShadow><boxGeometry args={[0.5, 0.016, 0.36]} /><meshStandardMaterial color={'#3a3d45'} metalness={0.4} roughness={0.5} /></mesh>
-        {[[0, 0.035, 0.175, 0.5, 0.05, 0.02], [0, 0.035, -0.175, 0.5, 0.05, 0.02], [0.25, 0.035, 0, 0.02, 0.05, 0.37], [-0.25, 0.035, 0, 0.02, 0.05, 0.37]].map((w, i) => (
+        <mesh position={[0, 0.008, 0]} receiveShadow><boxGeometry args={[0.52, 0.016, 0.38]} /><meshStandardMaterial color={'#3a3d45'} metalness={0.4} roughness={0.5} /></mesh>
+        {[[0, 0.038, 0.185, 0.52, 0.056, 0.02], [0, 0.038, -0.185, 0.52, 0.056, 0.02], [0.26, 0.038, 0, 0.02, 0.056, 0.39], [-0.26, 0.038, 0, 0.02, 0.056, 0.39]].map((w, i) => (
           <mesh key={i} position={[w[0], w[1], w[2]]} castShadow><boxGeometry args={[w[3], w[4], w[5]]} /><meshStandardMaterial color={'#33363d'} metalness={0.4} roughness={0.55} /></mesh>
         ))}
-        {/* two dividers -> three compartments */}
-        {[-0.083, 0.083].map((x) => (
-          <mesh key={x} position={[x, 0.03, 0]}><boxGeometry args={[0.012, 0.04, 0.35]} /><meshStandardMaterial color={'#2b2e34'} metalness={0.4} roughness={0.55} /></mesh>
+        {/* dividers -> three compartments */}
+        {[-0.087, 0.087].map((x) => (
+          <mesh key={x} position={[x, 0.032, 0]}><boxGeometry args={[0.012, 0.045, 0.37]} /><meshStandardMaterial color={'#2b2e34'} metalness={0.4} roughness={0.55} /></mesh>
         ))}
-        {/* screws lying flat inside each compartment (resting on the floor) */}
-        {[-0.166, 0, 0.166].map((cx, ci) =>
-          [-0.1, -0.02, 0.06, 0.13].map((cz, si) => (
-            <mesh key={`${ci}:${si}`} position={[cx + (si % 2 ? 0.018 : -0.014), 0.026, cz]} rotation={[Math.PI / 2, 0, (ci - 1) * 0.4 + si * 0.15]} castShadow>
-              <cylinderGeometry args={[0.009, 0.009, 0.05, 8]} />
-              <meshStandardMaterial color={ci === 1 ? '#c9a24a' : '#9a9da3'} metalness={0.8} roughness={0.35} />
-            </mesh>
-          )),
-        )}
+        {/* compartment 1: a heap of screws (mixed lengths, silver + brass) */}
+        {[[-0.19, -0.11, 0.5, 0.05], [-0.17, -0.03, -0.7, 0.06], [-0.2, 0.05, 1.4, 0.045], [-0.15, 0.12, 0.2, 0.055], [-0.21, 0.0, 2.6, 0.05], [-0.16, -0.14, -1.5, 0.04]].map(([x, z, r, l], i) => (
+          <Screw key={i} position={[x, 0.028, z]} rotation={[0, r, 0]} len={l} mat={i % 3 === 0 ? BRASS : METAL_LT} />
+        ))}
+        {/* compartment 2: hex nuts + washers */}
+        {[[-0.02, -0.12], [0.03, -0.04], [-0.03, 0.05], [0.02, 0.13]].map(([x, z], i) => (
+          <Nut key={i} position={[x, 0.026, z]} rotation={[0, i * 0.5, 0]} mat={i % 2 ? METAL_DK : METAL_LT} />
+        ))}
+        {[[0.01, -0.08], [-0.04, 0.0], [0.04, 0.09]].map(([x, z], i) => (
+          <Washer key={i} position={[x, 0.021, z]} rotation={[0, i, 0]} />
+        ))}
+        {/* compartment 3: mixed small parts — resistors, a cap, jumper coils */}
+        {[[0.16, -0.12, '#0c0c0f'], [0.2, -0.05, '#0c0c0f'], [0.15, 0.02, '#4a3a1a']].map(([x, z, c], i) => (
+          <group key={i} position={[x as number, 0.026, z as number]} rotation={[Math.PI / 2, 0, (i - 1) * 0.6]}>
+            <mesh castShadow><cylinderGeometry args={[0.007, 0.007, 0.032, 8]} /><meshStandardMaterial color={c as string} roughness={0.5} /></mesh>
+            {[-0.008, 0.008].map((b) => <mesh key={b} position={[0, b, 0]}><cylinderGeometry args={[0.0072, 0.0072, 0.003, 8]} />{BRASS}</mesh>)}
+          </group>
+        ))}
+        {/* a coiled jumper wire */}
+        <mesh position={[0.19, 0.03, 0.11]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+          <torusGeometry args={[0.03, 0.006, 8, 20]} />
+          <meshStandardMaterial color={'#c0392b'} roughness={0.6} />
+        </mesh>
+        {/* a small electrolytic cap standing in the corner */}
+        <mesh position={[0.2, 0.04, 0.14]} castShadow><cylinderGeometry args={[0.016, 0.016, 0.035, 12]} /><meshStandardMaterial color={'#243a6a'} roughness={0.45} /></mesh>
       </group>
 
       {/* soldering iron in a stand + brass sponge + solder spool */}
@@ -1234,22 +1326,24 @@ function BenchClutter() {
         {tube([[-0.02, 0.05, -0.04], [0.1, 0.09, -0.16], [0.2, 0.06, -0.12]], 0.012, '#2fae5a', 'jw3')}
       </group>
 
-      {/* the dock at the back of the bench. Ports (local x, dock at x=0.1):
-          -0.08 telemetry, 0.04 printer, 0.16/0.28 empty (0.28 = the target the
-          arm plugs the off-monitor's charging block into — the About move). */}
+      {/* the power hub. Sockets (local x, dock at x=0.1): -0.07 telemetry
+          (a charger plugged in), 0.1 middle (the empty target the arm plugs the
+          off-monitor charger into for About), 0.27 spare. */}
       <Dock position={[0.1, 0, -0.72]} />
-      {/* the dock's own power lead runs off the back edge + drops to the wall */}
-      {tube([[0.1, 0.05, -0.82], [0.08, 0.04, -1.25], [0.0, 0.03, -1.62], [-0.05, -0.5, -1.7], [-0.05, -1.9, -1.72]], 0.022, '#0c0c0e', 'cbl_pwr')}
-      {/* telemetry monitor -> seated plug in port 0 (clearly plugged in), draped */}
-      <Plug position={[-0.08, 0, -0.52]} rotation={[0, Math.PI, 0]} />
-      {tube([[-3.05, 0.06, -0.62], [-2.5, 0.04, -0.82], [-1.7, 0.04, -0.86], [-0.9, 0.05, -0.78], [-0.35, 0.05, -0.6], [-0.12, 0.045, -0.46]], 0.018, '#0d0d0f', 'cbl_tele')}
-      {/* 3D printer -> seated plug in port 1, draped */}
-      <Plug position={[0.04, 0, -0.52]} rotation={[0, Math.PI, 0]} />
-      {tube([[2.5, 0.06, -0.5], [1.7, 0.04, -0.78], [0.9, 0.04, -0.82], [0.35, 0.05, -0.66], [0.08, 0.045, -0.46]], 0.018, '#0d0d0f', 'cbl_prn')}
-      {/* off monitor -> its UNPLUGGED charging block sitting in the open front,
-          near the arm. Cable stays left of the arm and drapes naturally. */}
+      {/* dock -> a Canadian wall outlet mounted under the desk (so it goes
+          somewhere). Cord runs off the back edge and drops down the wall. */}
+      <CanadianOutlet position={[0.55, -1.8, -1.78]} />
+      {tube([[0.1, 0.06, -0.85], [0.28, 0.04, -1.2], [0.42, 0.05, -1.55], [0.5, -0.1, -1.72], [0.55, -0.9, -1.76], [0.55, -1.62, -1.78]], 0.02, '#0c0c0e', 'cbl_pwr')}
+      {/* the 3-prong plug seated in the outlet */}
+      <mesh position={[0.55, -1.72, -1.72]} castShadow><boxGeometry args={[0.075, 0.09, 0.05]} /><meshStandardMaterial color={'#1a1b20'} roughness={0.6} /></mesh>
+      {/* TELEMETRY monitor: its charger is plugged into the dock; cable drapes
+          up behind the monitor (clear of the base). */}
+      <ChargingBlock position={[-0.07, 0, -0.52]} rotation={[0, Math.PI, 0]} />
+      {tube([[-2.9, 0.4, -0.56], [-2.92, 0.16, -0.72], [-2.6, 0.04, -0.84], [-2.05, 0.05, -0.78], [-1.55, 0.04, -0.86], [-1.0, 0.05, -0.79], [-0.5, 0.04, -0.7], [-0.18, 0.05, -0.55], [-0.07, 0.05, -0.44]], 0.016, '#101014', 'cbl_tele')}
+      {/* OFF monitor: its charger is UNPLUGGED, sitting in the open near the arm.
+          Cable drapes down behind the base, out around it, then forward. */}
       <ChargingBlock position={[-0.42, 0, 0.92]} rotation={[0, 1.5, 0]} />
-      {tube([[-1.45, 0.06, -0.58], [-1.35, 0.03, -0.15], [-1.15, 0.03, 0.35], [-0.85, 0.04, 0.72], [-0.6, 0.04, 0.9], [-0.5, 0.05, 0.94]], 0.018, '#0d0d0f', 'cbl_off')}
+      {tube([[-1.33, 0.4, -0.56], [-1.5, 0.14, -0.74], [-1.82, 0.04, -0.58], [-1.78, 0.04, -0.05], [-1.5, 0.05, 0.32], [-1.12, 0.04, 0.62], [-0.72, 0.05, 0.86], [-0.5, 0.05, 0.93]], 0.016, '#101014', 'cbl_off')}
     </group>
   )
 }

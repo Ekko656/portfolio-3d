@@ -161,16 +161,63 @@ function Keyboard({ position, rotation = [0, 0, 0] }: { position: [number, numbe
 }
 
 function Mouse({ position }: { position: [number, number, number] }) {
+  const cable = useMemo(() => {
+    const curve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(0, 0.04, -0.15),
+      new THREE.Vector3(0.03, 0.03, -0.32),
+      new THREE.Vector3(-0.04, 0.03, -0.5),
+      new THREE.Vector3(0.02, 0.03, -0.68),
+    ])
+    return new THREE.TubeGeometry(curve, 40, 0.008, 6)
+  }, [])
+  const SHELL = <meshStandardMaterial color={'#191b21'} metalness={0.22} roughness={0.48} />
   return (
     <group position={position}>
-      <mesh castShadow scale={[1, 0.55, 1.5]}>
-        <sphereGeometry args={[0.08, 18, 12]} />
-        <meshStandardMaterial color={'#17191d'} metalness={0.25} roughness={0.5} />
+      {/* main shell — a bigger, tapered gaming-mouse body resting on the desk */}
+      <mesh position={[0, 0.045, 0]} scale={[1, 0.5, 1.6]} castShadow receiveShadow>
+        <sphereGeometry args={[0.1, 24, 16]} />
+        {SHELL}
       </mesh>
-      {/* scroll wheel slit */}
-      <mesh position={[0, 0.06, 0.03]}>
-        <boxGeometry args={[0.014, 0.02, 0.05]} />
-        <meshStandardMaterial color={'#2fd0c0'} emissive={'#1a6a64'} emissiveIntensity={0.6} toneMapped={false} />
+      {/* left + right click buttons, split by a centre groove */}
+      {[-1, 1].map((s) => (
+        <mesh key={s} position={[s * 0.03, 0.078, 0.07]} scale={[1, 0.45, 1.15]} castShadow>
+          <sphereGeometry args={[0.052, 18, 12]} />
+          <meshStandardMaterial color={'#14161a'} roughness={0.42} />
+        </mesh>
+      ))}
+      <mesh position={[0, 0.088, 0.09]}>
+        <boxGeometry args={[0.006, 0.02, 0.14]} />
+        <meshStandardMaterial color={'#0a0a0c'} roughness={0.6} />
+      </mesh>
+      {/* scroll wheel (rubber tread + teal glow) */}
+      <mesh position={[0, 0.096, 0.075]} rotation={[0, 0, Math.PI / 2]} castShadow>
+        <cylinderGeometry args={[0.016, 0.016, 0.016, 14]} />
+        <meshStandardMaterial color={'#0a0a0c'} roughness={0.7} />
+      </mesh>
+      <mesh position={[0, 0.1, 0.075]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.0165, 0.0165, 0.006, 14]} />
+        <meshStandardMaterial color={'#2fd0c0'} emissive={'#1a8078'} emissiveIntensity={1.2} toneMapped={false} />
+      </mesh>
+      {/* DPI button behind the wheel */}
+      <mesh position={[0, 0.093, 0.02]} castShadow>
+        <boxGeometry args={[0.016, 0.008, 0.014]} />
+        <meshStandardMaterial color={'#2a2c31'} roughness={0.5} />
+      </mesh>
+      {/* two thumb buttons on the left flank */}
+      {[0.1, 0.14].map((z) => (
+        <mesh key={z} position={[-0.093, 0.04, z]} rotation={[0, 0, 0.2]} castShadow>
+          <boxGeometry args={[0.014, 0.014, 0.03]} />
+          <meshStandardMaterial color={'#26282e'} roughness={0.5} />
+        </mesh>
+      ))}
+      {/* RGB accent strip low around the shell */}
+      <mesh position={[0, 0.02, 0]} scale={[1, 0.16, 1.62]}>
+        <sphereGeometry args={[0.101, 24, 8]} />
+        <meshStandardMaterial color={'#2fd0c0'} emissive={'#1f8f86'} emissiveIntensity={0.7} toneMapped={false} transparent opacity={0.55} />
+      </mesh>
+      {/* braided cable trailing off toward the dock */}
+      <mesh geometry={cable} castShadow>
+        <meshStandardMaterial color={'#101014'} roughness={0.85} />
       </mesh>
     </group>
   )
