@@ -1,38 +1,52 @@
 # portfolio-3d — Handoff / Context Document
 
-Everything a fresh chat needs to continue this project with zero context loss.
+Everything a fresh chat needs to continue with zero context loss.
 **Read this whole file before touching anything.** The owner (Ekam) is very
-particular; skipping context here has repeatedly caused rework and frustration.
+particular — skipping context here has repeatedly caused rework and real anger.
+Last updated mid-session, right after the soldering-station rebuild and a
+base-flip experiment, with a concrete un-done task list at the top (§0).
 
 ---
 
-## 0. TL;DR + immediate next steps
+## 0. IMMEDIATE PENDING WORK (do these first, in this order)
 
-We are building an **interactive 3D portfolio landing scene**: a stylized
-**Big Hero 6 "Hiro's garage"** — a dark, amber-lit, industrial robotics
-engineer's **workbench at dawn**, with the real SO-101 robot arm alive on the
-bench. It's a jewel-box diorama with a fixed cinematic camera. Later, a single
-interaction (arm plugs a cable into a second monitor → boot → dive into the
-screen) hands off to a clean **editorial content site** (About/Projects/Résumé/
-Contact). Benchmarked against **jesse-zhou.com** and **bruno-simon.com**.
+These are Ekam's most recent instructions, **not yet done**. He was frustrated
+about low-poly/clipping again. Verify EVERY item in the live preview.
 
-**Current state:** the garage environment is ~80% dressed and looking good
-(dark amber industrial, bench against the wall, dual monitors, code-built PC +
-3D printer, pegboard, tool chest, dev board + servo the arm works over,
-basketball + Nike Dunks under the bench, rainy-dawn window, lots of detail).
-The arm has continuous organic motion but **Ekam doesn't like the arm movement
-yet** — explicitly deferred ("work on that later").
+1. **Mouse** — currently has "two giant ovals on it for no reason" (the L/R
+   button spheres + an RGB accent sphere read as ovals). Make it a **real
+   mouse**: one smooth tapered shell, a subtle centre button split line, a real
+   scroll wheel, no giant ovals, no low-poly. In `Workstation.tsx` → `Mouse`.
+2. **"Giant green box"** — get rid of it. LIKELY the 3D-printer's teal print on
+   the bed OR the teal soldering-station body reading as a big green box. LOOK
+   at the right side of the bench first to identify which, then remove/fix it.
+3. **Soldering iron** — "looks like two cylinders with shit clipping into each
+   other and completely wrong proportions." The `Stage.tsx` soldering-station
+   rebuild (Weller-style, teal) he dislikes at scene scale. Fix proportions /
+   the iron so it doesn't read as two clipping cylinders. (A close-up reference
+   is saved — see §11.)
+4. **Arm base — REVERT the flip.** I set `rotation={[-Math.PI/2,0,Math.PI]}` on
+   the arm primitive (So101Arm.tsx line ~329, **uncommitted**). He said "rotate
+   the arm back to how it was" → put it back to `rotation={[-Math.PI/2,0,0]}`.
+5. **Arm feet** — "it's missing the two little feet stands like a regular SO-ARM
+   101." The base feet meshes are currently HIDDEN (So101Arm.tsx ~line 165 hides
+   `waveshare_mounting_plate`, `base_motor_holder`, `base_so101_v2`). Un-hide /
+   add the two little foot stands the real SO-101 base has.
+6. **Luxo movement** — do it now (this is Phase 1). Requirements: **NOT drooping
+   whatsoever**, it should be "looking straight up," **natural**. The current
+   idle (`ORG_REST=[0,-0.72,-0.66,-0.35,0,0.3]`) droops the head down — that's
+   the opposite of what he wants. Rework so the arm carries itself upright/alert,
+   gazing up, with flowy continuous life (see §5 + §6 for the full plan).
+7. **Power deck (the dock) — still not visibly plugged in.** Make a **VISIBLE
+   outlet ON THE WALL BENEATH THE TABLE** and have the deck plugged into it.
+   (Prior attempt put an outlet under the desk but it doesn't read as connected.)
+8. **Brick chargers on top of the deck** — the monitor's two-prong charging
+   bricks should plug into **sockets on the TOP of the deck** (facing up), with
+   the FIRST monitor's brick actually plugged into a top socket. So the dock
+   needs top-facing sockets, not (only) front ones.
 
-**What's NOT built yet:** the interaction (plug-in → boot → dolly into screen),
-the editorial content site, sound, the loader/boot sequence.
-
-**Likely next work (confirm with Ekam):**
-1. Keep refining environment detail/density (his current focus — "get the
-   environment and scene perfect first").
-2. Then: redo the arm's movement to feel deliberate/creature-like (he wants
-   fluid life but dislikes the current noise-drift).
-3. Then: the plug-in → boot → editorial interaction.
-4. Then: the editorial site.
+Uncommitted right now: only `src/components/arm/So101Arm.tsx` (the base flip that
+must be reverted). Everything else is pushed (HEAD `2abc15c` before this doc).
 
 ---
 
@@ -42,11 +56,11 @@ the editorial content site, sound, the loader/boot sequence.
   at humanoid robotics (cites Tesla Optimus). Calgary → Vancouver. Likes
   basketball/NBA, Nike Dunks, volleyball, boxing, Drake, League.
 - **Goal:** a personal portfolio (`ekamkooner.com`) that is unexpected and
-  impressive — an interactive 3D scene, NOT a normal webpage with a 3D
-  decoration bolted on. Wow-weighted but must stay **recruiter-credible**
-  (Summer-2026 internships).
-- The 3D scene is the wordless hero/landing; a **separate clean editorial site**
-  holds the actual readable content, reached via one diegetic interaction.
+  impressive — an interactive 3D scene, NOT a normal webpage with a 3D decoration
+  bolted on. Wow-weighted but must stay **recruiter-credible** (Summer-2026
+  internships).
+- The 3D scene (a Big Hero 6 "garage") is the wordless hero; a separate clean 2D
+  editorial site holds the readable content, reachable via a bottom button.
 
 ---
 
@@ -54,241 +68,236 @@ the editorial content site, sound, the loader/boot sequence.
 
 - **Working dir:** `~/portfolio-3d`
 - **Repo:** `git@github.com:Ekko656/portfolio-3d.git` (public), branch `main`.
-  Commits authored as `ekooner656@gmail.com` so they green Ekam's contribution
-  graph. **He wants frequent commits + pushes.**
+  Commits authored `ekooner656@gmail.com` (greens Ekam's contribution graph).
+  **He wants frequent commits + pushes — "always push."** End commit messages
+  with `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`.
 - **Stack:** Vite + React 18 + TypeScript + Tailwind + three 0.171 +
   @react-three/fiber 8 + @react-three/drei + @react-three/postprocessing +
-  urdf-loader. Node 24. Blender 5.1.2 installed (Metal GPU) for asset work.
-- **Old repo** `github.com/Ekko656/portfolio` (branch `scene-rebuild`) is the
-  ABANDONED stock-kit "MegaLab" version — reference only, don't merge.
+  urdf-loader. Node 24. **Blender 5.1.2** installed (`/Applications/Blender.app/
+  Contents/MacOS/Blender`, Metal GPU) for asset work.
 
-### Preview / dev-server gotchas (IMPORTANT — these wasted time)
-- The **Claude Preview MCP is rooted at `/Users/ekam`**, so `preview_start`
-  launches the WRONG project (an old `~/portfolio` server on **5173**).
-- **Run this project's dev server manually on port 5174** and point the preview
-  browser at it:
-  ```
-  cd ~/portfolio-3d && nohup npm run dev -- --port 5174 --strictPort >/tmp/p3d-dev.log 2>&1 &
-  ```
-  Then in a `preview_eval`: `location.href = 'http://localhost:5174/'`.
-  The dev server sometimes dies between sessions — restart it (check
-  `curl -s -o /dev/null -w "%{http_code}" http://localhost:5174/`).
-- **Black screenshots are usually a false alarm:** the preview tab backgrounds
-  itself (`document.visibilityState === 'hidden'`), pausing requestAnimationFrame.
-  Take a second screenshot; it usually foregrounds. If truly black, run
-  `npx vite build --mode development` to check for a real compile error.
-- The scene is asset-heavy (13 STL for the arm + 2 GLB); **wait ~13s after a
-  reload** before screenshotting.
-- **Verify every visual change in the live preview** before claiming it's done.
-  Ekam repeatedly catches claims that don't match the render.
+### Preview / dev-server gotchas (these have wasted a LOT of time)
+- Two preview tool families exist. This session used the **Browser pane**
+  (`mcp__Claude_Browser__*`): `preview_start {name:"portfolio"}` starts the dev
+  server AND opens tab `seed` at `localhost:5174`. Screenshot via
+  `computer {action:"screenshot"}`, run JS via `javascript_tool`. There is also
+  an older `mcp__Claude_Preview__*` family with `preview_screenshot`/`preview_eval`.
+- The preview reads **`/Users/ekam/.claude/launch.json`** (NOT the repo one),
+  which I set to `npm --prefix portfolio-3d run dev -- --port 5174 --strictPort`,
+  port 5174, autoPort false. It serves portfolio-3d correctly.
+- **WebGL context loss:** after ~a dozen `location.reload()`s the canvas goes
+  black (a dark radial "blob" over the CSS bg) even though `document.querySelector
+  ('canvas')` exists and `window.__robot` is set. **Fix = `preview_stop` then
+  `preview_start`** (fresh browser context). Don't mistake this for a code crash.
+- If the page shows a **navy dotted background with no 3D** and console has a
+  `<Mouse>`/`<Canvas>` React error → a runtime error in a scene component blanked
+  the Canvas via its ErrorBoundary. Read console, fix the component. (A dangling
+  `geometry={cable}` ref after removing a variable caused exactly this once.)
+- **Wait ~13–15s after a reload** before screenshotting (13 STL + 2 GLB load).
+- **Debug/inspect hooks:** `window.__pause = true` freezes the arm idle (set it
+  after load, before screenshotting, so poses are stable). `window.__robot` is
+  the loaded URDF root; `window.__robot.joints['Rotation'].setJointValue(v)` to
+  probe joints; `window.__robot.links['jaw'].getWorldPosition(...)` for FK.
+- **To inspect a small prop up close, MOVE THE CAMERA** (edit the `camera` +
+  `lookAt` in Stage.tsx, reload, screenshot, then restore). NEVER drop oversized
+  inspection props into the live scene — a giant inspection-rig shoe once made
+  him furious.
+- **Verify every visual change in the live preview before claiming done.** He
+  repeatedly catches claims that don't match the render. Check against each
+  object's ACTUAL footprint (positions are in this doc / the code) — the
+  recurring clipping bugs came from eyeballing coordinates instead.
 
 ---
 
 ## 3. ART DIRECTION (locked) — Big Hero 6 garage
 
 **Stylized (NOT photoreal), dark, amber-lit, INDUSTRIAL GARAGE.** Reference:
-Hiro Hamada's garage-lab, esp. the nanobot + Baymax-armor-upgrade scenes — an
-"industrial genius working in his garage on Iron-Man-ish tech." A robotics
-engineer's workbench area **at dawn**.
+Hiro Hamada's garage-lab. A robotics engineer's workbench at dawn.
 
-Hard-won palette/mood rules (each learned by getting it wrong):
-- **Dark + amber**, moody. NOT a bright daylight "house/living room." NOT a
-  cozy warm space with fairy lights/LED string lights (both rejected).
-- **NOT a tan/beige "sandcastle" palette** — cohesive DARK industrial tones
-  (dark concrete, dark metal, dark wood), warm amber lighting, with **teal tech
-  glow accents** (monitors, PC RGB — the BH6 warm-orange + teal complement).
-- NO glowing "hero" gimmick elements (an arc reactor was built and rejected as
-  out-of-place).
-- Everything reads as a real working garage: concrete floor, industrial
-  workbench, tools, computers, robot parts, wires, clutter — lived-in.
+Palette/mood rules (each learned by getting it wrong):
+- Dark + amber, moody. NOT bright/daylight, NOT cozy "house," NOT fairy/LED
+  string lights (rejected), NOT a tan/beige "sandcastle" palette. Cohesive DARK
+  industrial tones + warm amber light + **teal tech-glow accents** (monitors, PC
+  RGB). No glowing "hero" gimmick (an arc reactor was built and rejected).
 
-### THE #1 RULE (he restated it many times — save it forever)
-**NEVER use low-polygon elements / simple shapes / solid-colour boxes mushed
-together.** Every element must be **extremely detailed and HEAVILY
-INTENTIONAL**. When adding "parts," make them look like REAL robotics/
-engineering parts (an Arduino, a breadboard with holes, a servo, a motor) — not
-random rings and blocks. He's suggested sourcing real STL/GLB files ("they're
-everywhere online"). Reality: the good detailed-model sites (Sketchfab/GrabCAD)
-are auth-gated and can't be pulled directly; free direct-download ones are
-low-poly. If Ekam drops `.stl`/`.glb` into `public/models/`, wire them in like
-the SO-101 (he sourced the arm + an old kit himself before).
+### THE #1 RULE (restated many times, and again this session)
+**NEVER low-polygon / simple solid-colour boxes/cylinders mushed together.**
+Every element must be **extremely detailed, intentional, and REALISTIC.** When
+he says a thing "looks like two cylinders" or "a giant box" that's the flashpoint.
+For organic/branded/complex props, **use a real reference image** (he responds
+well to that) and/or model them in **Blender** with subdivision surfaces and
+export GLB — do NOT stack R3F primitives for shoes/balls/etc.
 
 ---
 
-## 4. The scene as it stands (file-by-file)
+## 4. Scene as it stands (file-by-file)
 
-Entry: `src/App.tsx` → `src/landing/Stage.tsx` (one `<Canvas>`).
+Entry: `src/App.tsx` → `src/landing/Stage.tsx` (one `<Canvas>`, fixed cinematic
+camera at `[8.4,4.2,13] lookAt(-0.2,1.5,-2.4)`, fov 42, ACESFilmic, exposure
+1.08, Fog(BG,20,46), Bloom + Vignette).
 
-### `src/landing/Stage.tsx` (the whole scene) — key constants
-- `DESK_Y = 0.4` (benchtop height), `DESK_W = 9.0` (bench width), `DESK_D = 3.4`
-  (bench depth), `BENCH_Z = -2.0` (the bench CLUSTER is wrapped in a group at
-  this z so its back edge sits ~z-3.7 against the wall).
-- Camera: `position [8.4, 4.2, 13.0], fov 42`, `lookAt(-0.2, 1.5, -2.4)`. Fixed
-  (no OrbitControls). Fog `(BG, 20, 46)`, exposure `1.08`, ACESFilmic.
-- Palette: `BG #0e0f11`, floor tint `#44423e`, walls dark, amber `KEY/PRACTICAL`,
-  `RIM #9ec2ff` (cool dawn), teal accents `#2fe6d0`.
-- **Components in Stage:**
-  - `Workbench` — heavy industrial bench against the wall: steel-tube frame,
-    worn dark-wood top (`workbenchTexture`) with steel edge banding, and a
-    **3-drawer full-height cabinet** on the right (floor→benchtop, faces flush
-    to front). Bench cluster group also holds Workstation, printer, BenchClutter,
-    So101Arm.
-  - `Shell` — dark concrete floor (`concreteTexture`), a left OSB wall
-    (`plywoodTexture`), a dark board ceiling (`ceilingTexture`) + exposed
-    wood joists + a conduit pipe.
-  - `ShopLight` — hanging fluorescent fixture with **amber** tubes + amber
-    point light (the motivated key), centered over the bench.
-  - `Lighting` — low warm-amber ambient + hemisphere, amber directional key
-    (shadows), cool dawn rim from the window, one amber work-lamp point.
-  - `WallDressing` — the pegboard (right of window) with `Tools` hung on **real
-    peg hooks**, 4 corner mounting screws, and a tool ledge/shelf (cans/jar/box).
-  - `Tools` / `Hook` / `OpenWrench` / `Screwdriver` — the spread tool wall.
-  - `Background` — narrow wall shelves with detailed `PartBin`s + a `ScrewJar`;
-    a blueprint poster; taped photos/notes; a round wall clock; wall conduit; a
-    shop stool.
-  - `PartBin` / `ScrewJar` — detailed stackable louvered bins / glass jar.
-  - `BenchClutter` — on the bench: a **dev board** (green PCB w/ IC, gold header
-    pins, USB-C, caps, LEDs) the arm works over; a servo motor + ribbon cable; a
-    parts tray with screws; a soldering iron in a stand; a **cluster of real
-    robotics parts by the monitors** (Arduino-style board, breadboard with a
-    hole-grid canvas texture, gearmotor, jumper wires); a power strip + routed
-    cables. `tube()` helper builds cables. `makeBreadboardTex()` draws the
-    breadboard top.
-  - `PcTower` — **code-built** gaming PC: dark chassis panels, glass front,
-    RGB interior (GPU + spinning fans, cooler, RAM, PSU) read through the glass.
-    `PcFan` blades spin via useFrame ("whirring"). Sits UNDER the desk, under
-    the monitors.
-  - `ToolChest` — red rolling tool chest (left, against the wall).
-  - `Basketball` (seamed) + `Sneaker` (Nike-Dunk-style, white/red) — under the
-    bench beside the drawers (Ekam's personal touch).
-  - `Printer3D` + `Workstation` + `So101Arm` are placed inside the bench group.
-  - NOTE: `ArcReactor` is defined but UNUSED (removed from the scene — do NOT
-    re-add; it was rejected).
+Key constants (Stage.tsx): `DESK_Y=0.4` (benchtop), `DESK_W=9`, `DESK_D=3.4`,
+`BENCH_Z=-2` (bench cluster group offset). Palette: `BG #0e0f11`.
 
-### `src/landing/Printer3D.tsx`
-Code-built, coherent Ender-3 (extrusion frame, posts + top bar, gold Z lead
-screws, heated bed + half-print, X-gantry). The **print head glides side-to-side
-+ a part-cooling fan spins** (useFrame). Scale ~0.6 on the bench right.
-(Replaced the earlier Blender `printer.glb`, which looked like "a mash of parts.")
+**Coordinate note (critical for placing/routing):** the bench cluster is
+`<group position={[0,0,BENCH_Z=-2]}>`. Inside it, `BenchClutter` and
+`Workstation` render inside `<group position={[0,DESK_Y=0.4,0]}>`. So a
+BenchClutter/Workstation LOCAL coord `[x,y,z]` → WORLD `[x, y+0.4, z-2]`. The arm
+(`So101Arm`) is a direct child of the bench group (not the +0.4 inner group).
+
+### `src/landing/Stage.tsx` (most of the scene) — components
+- `Workbench`, `Shell` (concrete floor at world y=-2, OSB wall, joisted ceiling),
+  `ShopLight` (amber fluorescent), `Lighting`, `WallDressing` (pegboard + tools +
+  ledge shelf + the box level laid flat on the ledge), `Background` (wall shelves,
+  poster, clock, notes), `ToolChest` (red, left; holds the résumé `PaperStack`),
+  `PcTower` (code-built RGB gaming PC, under-desk left, world [-2.4,-2,-1.2]),
+  `Printer3D` (right), `Basketball` + two `Sneaker`s (GLBs, under the bench),
+  `So101Arm`.
+- **Pegboard tools** (`Tools`, ~line 745): `ComboWrench`, `Screwdriver`, `Pliers`
+  (jaws cross at a visible pivot), `ClawHammer`, `TapeMeasure`, `AdjustableWrench`,
+  `Handsaw`, coiled cord w/ plug. Each wrapped in an `at(x,y,scale, <El/>)` scaler.
+  Ledge shelf holds a spray can, a jar of screws, a cardboard box, + `LedgeLevel`.
+- **BenchClutter** (~line 1000+): the dev board, the small servo, the parts bin,
+  the soldering station, the far-left Arduino/breadboard cluster, the dock +
+  cabling. Helpers: `tube(points,r,color,key)` (CatmullRom cable), `Plug`
+  (chunky two-prong block), `ChargingBlock` (two-prong power brick, `PRONG_DX`
+  =0.03, default dark `#24262d`, `color` prop), `Dock` (`DOCK_PORTS=[-0.17,0,0.17]`,
+  front-facing charger sockets — **needs TOP sockets per §0.8**), `CanadianOutlet`
+  (ivory duplex, faint self-lit plate), `PinHeader`, `Screw`/`Nut`/`Washer`,
+  `makePcbTex` (green PCB w/ traces/pads/silkscreen "SO-DEV rev.C").
+- **Dev board** (green PCB the arm works over): local `[0.98,0.02,0.55]` rot
+  `[0,0.3,0]`, ~x[0.57,1.46] z[0.27,0.83]. Has QFP MCU w/ gold legs, seated pin
+  headers, small blue/purple caps, banded resistors, crystal, reset button, LEDs.
+- **Small servo:** local `[1.28,0.02,1.02]` rot `[0,-0.5,0]` (shrunk + moved
+  clear of the board after it was a huge clipping box).
+- **Parts bin:** local `[1.82,0.02,0.48]` rot `[0,-0.2,0]`. Open compartment tray
+  with `Screw`/`Nut`/`Washer`/resistor/jumper hardware sorted in compartments.
+- **Soldering station:** local `[2.62,0.02,0.82]` rot `[0,-0.4,0]` — teal Weller-
+  style unit + black holder tray + iron. **He dislikes it (see §0.3).**
+- **Cabling / dock (BenchClutter, ~line 1330):** `Dock` at local `[0.1,0,-0.72]`.
+  Telemetry monitor's `ChargingBlock` seated at its front socket, cable draped
+  behind the base. Off-monitor's `ChargingBlock` sits UNPLUGGED in the open near
+  the arm at `[-0.42,0,0.92]` (this is the About plug-in target). `CanadianOutlet`
+  at local `[-0.5,-1.0,-1.42]` (world ≈ [-0.5,-0.6,-3.42]) with a faint plate +
+  two soft `pointLight`s so it reads in the under-desk shadow; the dock's
+  `cbl_pwr` cord drops to a 3-prong plug in it. **§0.7/§0.8 change this whole
+  power story: top sockets + a clearly-plugged wall outlet beneath the table.**
+- **Keep-out footprints (for cable routing, LOCAL frame):** off-monitor base
+  x[-1.76,-1.14] z[-0.64,-0.32]; telemetry base x[-3.36,-2.74] z[-0.64,-0.32];
+  mouse x[-1.2,-1.0] z[0.54,0.86]; dock x[-0.18,0.38] z[-0.85,-0.59]. Route
+  cables AROUND these; make them genuinely wavy (multi-undulation), not one arc.
 
 ### `src/landing/Workstation.tsx`
-**Dual-monitor setup** (side by side, slight inward toe-in) to the LEFT of the
-arm so it never blocks them: left = live telemetry screen (canvas texture driven
-by the real arm joints via `armState`), right = dark "off" doorway monitor
-(the one the arm will plug in). Keyboard, mouse, and a `Connector` (neat cable +
-plug) laying within the arm's reach. Monitors moved forward so they don't clip
-the window.
+Dual monitors (telemetry "on" + a dark "off" one): telemetry `[-3.05,0,-0.5]`
+rot `[0,0.16,0]`, off `[-1.45,0,-0.5]` rot `[0,-0.16,0]` — a real gap + toed IN
+toward each other. `Keyboard`, `Mouse` (`[-1.1,0,0.7]`, **needs the §0.1 rebuild**),
+and a `Connector` component (now unused). Each Monitor has a short cable stub out
+its back; the full routing lives in BenchClutter.
 
-### `src/components/arm/So101Arm.tsx` (the robot)
-- Real **SO-ARM101** loaded from URDF + 13 STL meshes (`public/so101/`) via
-  `urdf-loader` + `STLLoader`. Re-skinned to steel/charcoal PBR; hidden the boxy
-  base enclosure meshes. `scale=4.8`, position `[-0.026, 0.168, -0.153]`
-  (base seated on benchtop). Inside the bench group at `BENCH_Z`.
-- **Kinematics ground-truth (VERIFIED live — do not re-derive):**
-  joints `Rotation, Pitch, Elbow, Wrist_Pitch, Wrist_Roll, Jaw` (radians).
-  - Rotation: + turns toward viewer/right, − toward window/left.
-  - Pitch: 0 = upper-arm vertical, − leans forward.
+### `src/landing/Printer3D.tsx`
+Code-built Ender-3 (aluminium frame, heated bed, X-gantry). `gz=1.02` gantry
+height; the print head glides x within the part's footprint; a **teal partial
+print** (`PRINT='#39c6b6'`, brim + layer stack + half-finished top layer) sits on
+the bed = "actually printing." **This teal print may be the "giant green box"
+(§0.2) — check.**
+
+### `src/landing/Outdoors.tsx` / `Window.tsx` / `textures.ts` / `armState.ts`
+Rainy-dawn matte scene through a real 6-pane window (lightning sets
+`weather.flash`). Procedural canvas textures. `armState` is the shared object the
+arm writes each frame and the telemetry monitor reads.
+
+### GLB assets — `public/models/` (built by `assets-src/blender/*.py`)
+- `basketball.glb` ← `ball.py`. **Correct real seam layout:** a horizontal
+  equator + a vertical centre line (both great circles → read straight) + TWO
+  CONCAVE side seams that are OFFSET small circles tilted off the view axis, so
+  each bows OUTWARD and pinches nearest the centre at the equator (NO pole
+  convergence, NO wavy belt, NOT perfect circles on the outer two). Pebble via
+  noise displace. Ekam iterated on this ~8 times — the current version is
+  approved. Run: `Blender -b -P ball.py -- --render` (writes `_preview_ball.png`)
+  and `--export`. **Export uses `export_yup=False`** (keeps the Y-up authoring).
+- `sneaker.glb` ← `shoe.py`. Adidas Samba/Gazelle three-stripe: lofted subdivision
+  upper (heel/collar, ankle throat dip, toe spring), gum sole, three side stripes,
+  laces, tongue, dark ankle opening. Blue upper. Loaded via `useGLTF` + `Suspense`.
+- `pc.glb`, `printer.glb` are UNUSED (rebuilt in R3F). Blender `pc.py`/`printer.py`/
+  `workbench.py` are reference only.
+- Load pattern in Stage.tsx: `useModel(url)` clones the GLB + enables shadows;
+  `Basketball`/`Sneaker` are `<primitive>` wrappers with scale (ball 0.34,
+  sneaker 0.4), wrapped in `<Suspense fallback={null}>`.
+
+---
+
+## 5. The arm — `src/components/arm/So101Arm.tsx`
+
+- Real **SO-ARM101** from URDF + 13 STL (`public/so101/`) via `urdf-loader` +
+  STLLoader. Re-skinned to `#dbe2ee` body + `#262b34` servos. `scale=4.8`,
+  `position={[-0.026,0.168,-0.153]}`. **Currently** `rotation={[-Math.PI/2,0,Math.PI]}`
+  (the base-flip experiment) — **REVERT to `[-Math.PI/2,0,0]`** per §0.4.
+- The base feet meshes (`waveshare_mounting_plate`, `base_motor_holder`,
+  `base_so101_v2`) are set `visible=false` (~line 165). §0.5: bring back the two
+  little foot stands.
+- **Kinematics ground-truth (VERIFIED live — do not re-derive):** joints
+  `Rotation, Pitch, Elbow, Wrist_Pitch, Wrist_Roll, Jaw` (radians).
+  - Rotation: + toward viewer/right, − toward window/left.
+  - Pitch: 0 = upper-arm vertical, − leans it forward.
   - **Elbow: −1.7 = straight, 0 = fully folded** (negative extends).
-  - Wrist_Pitch: − tilts head up, + down. Wrist_Roll: head cock. Jaw: open amt.
-  - Debug hooks in code: `window.__pause=true` freezes idle;
-    `window.__robot.joints['X'].setJointValue(v)` to probe; screenshot; read off.
-- **Current motion = continuous organic noise** (`fbm` = layered incommensurate
-  sines per joint × a slow "energy" envelope + breathing). Always moving, never
-  static, gaze wandering. Lightning (`weather.flash` from Outdoors) triggers a
-  smooth startle flinch. **Ekam does NOT like this movement yet** — deferred.
-  He wants "completely fluid movement, life, breathing," NOT move-hold-move, but
-  the current noise-drift also isn't right to him. (Old keyframe scheduler code
-  — BEHAVIORS, pickBehavior, nextSeg — is still in the file but UNUSED.)
-- A **measured floor guard** (exact FK, bisects toward a SAFE pose) keeps the
-  gripper from dipping through the benchtop; `CLEARANCE = 0.48`. Do not replace
-  with analytic math.
-- `src/landing/ignition.ts` — scaffold for the future plug-in choreography
-  (phases reach/grab/lift/slot/release/surge). Present but the interaction isn't
-  wired/used yet; the arm's IGN_POSE branch exists in So101Arm.
-
-### `src/landing/Outdoors.tsx` (through the window)
-Layered "lofi rainy dawn" matte scene: a canvas gradient dawn sky, hill bands, a
-vertex-coloured meadow, a lone **normal fluffy tree** (off-centre in the left
-pane so the mullion doesn't block it), instanced wispy grass, real petaled
-flowers (rejection-sampled, non-overlapping) + one larger foreground bloom,
-drifting mist, falling rain, and **lightning bolts that flash the sky** and set
-`weather.flash`. All unlit (fog=false) and placed BEHIND the window wall (z<-4)
-so nothing pokes into the room.
-
-### `src/landing/Window.tsx`
-A real 6-pane window (extruded casing molding, mullions, sill, glass) with a
-genuine opening cut through a large back wall (`WALL` is 172 wide × 46 to fully
-enclose the room; `WALL_COL #332619` dark warm). Only view outside is the window.
-
-### `src/landing/textures.ts`
-Procedural canvas textures (no external assets), rebuilt at proper colored
-mid-tones so they READ: `concreteTexture`, `plywoodTexture` (OSB),
-`workbenchTexture` (wood), `ceilingTexture`, `pegboardTexture`. In Stage the
-mesh `color` prop tints these darker for the industrial look.
-
-### `src/landing/armState.ts`
-Shared object the arm writes each frame (joint values + `t`) and the telemetry
-monitor reads. `JOINT_RANGE` for normalized bars.
-
-### Blender assets — `assets-src/blender/*.py` (+ `public/models/*.glb`)
-`printer.py`, `pc.py`, `workbench.py` build models headless (Cycles Metal GPU;
-`--render` previews, `--export` writes GLB). **The Blender printer/PC looked like
-a mash of parts** (blind coordinate assembly is unreliable), so both were
-**rebuilt in R3F code instead** (Printer3D, PcTower) — the GLBs in
-`public/models/` are now UNUSED. Keep the scripts as reference; do NOT put those
-GLBs back in the scene. `BlenderPrinter.tsx` (a generic `GlbModel` loader) is
-also currently unused.
+  - Wrist_Pitch: − tilts head up, + down. Wrist_Roll: cocks head. Jaw: open amt.
+  - Empirically after the flip, at Rotation≈0 + forward lean the gripper reaches
+    forward over the dev board (gripZ≈-1.46 vs base z≈-2.15). FK varies a lot with
+    pose — verify each target pose with `setJointValue` + `getWorldPosition`.
+- **Current motion = continuous organic fBm noise** (`ORG_REST + ORG_AMP*energy*
+  fbm + breathe`, plus a lightning `STARTLE` flinch and an exact-FK floor guard
+  `CLEARANCE=0.48` that bisects toward `SAFE`). There is ALSO an unused keyframe
+  scheduler (`BEHAVIORS`, `pickBehavior`, `nextSeg`) and an unused ignition
+  choreography scaffold (`ignition.ts`, `IGN_POSE`).
+- **Ekam dislikes the current motion.** The `ORG_REST` head-down pose = the
+  "drooping" he hates. See §6.
 
 ---
 
-## 5. Working-style rules / feedback patterns (READ — Ekam is exacting)
+## 6. Luxo motion + idle plan (Phase 1 — the current big task)
 
-- **NEVER low-poly / solid-colour boxes.** Extremely detailed + intentional.
-  (See §3.) This is the recurring flashpoint.
-- **Go in the exact order he lists things.** He gets angry when tasks are
-  skipped or reordered. When he gives a numbered list, do #1→#N in order.
-- **Refine what exists before adding more** when he says so.
-- **Verify framing in-preview** before claiming done; elements have repeatedly
-  ended up off-frame or clipping (window, benchtop).
-- He wants concrete, opinionated options over vague questions — but when he
-  says "you decide," decide and show a result.
-- He iterates hard on aesthetics; matching Jesse/Bruno's intentional cohesion is
-  the bar. Their craft secret is **baked lighting** (Blender Cycles bake → unlit
-  textures) + selective bloom + ACESFilmic + small payload. (We're currently
-  doing live R3F lighting; baking is a future fidelity lever.)
-- Do NOT re-litigate rejected directions (§6).
-
----
-
-## 6. Rejected directions — DO NOT re-propose
-
-- Stock sci-fi asset kit ("MegaLab"), scattered gimmick props.
-- Cursor-controlled arm; humanoid point-cloud figure; primitive hand-built arm
-  (use the real SO-101 only).
-- Cozy warm "house/living room" look; tan/beige "sandcastle" palette; **fairy/
-  LED string lights**; a glowing "arc reactor" hero element.
-- The low-poly Blender printer/PC "mash of parts" — now rebuilt in code.
-- Arm motion as rigid move-to-pose-then-hold routines.
-- Blind full-machine assembly in Blender (unreliable) — assemble visually in
-  code or source real models.
+Decisions gathered from Ekam this session (all in the interaction-vision memory):
+- **Personality:** a MIX, mostly *balanced*, some *subtle/professional*, only a
+  little *playful/curious* (that one is the gimmick risk — keep it restrained).
+- **Never drooping. Carry upright / "looking straight up." Natural. Flowy —
+  never snap-move-hold.** Continuous life so it's never frozen (breathe/drift/
+  gaze underlay), plus REAL purposeful idle tasks, plus a lightning startle.
+- **Real idle tasks he approved (must be BIG + clearly visible, not tiny/vague):**
+  (a) **inspect a part** — grab a board/part off the bench, lift it near the
+  "head", slowly rotate to examine, set it back; (b) **plug/unplug the connector**;
+  (c) **press/poke the board** + react to an LED. He rejected "turn the servo
+  horn" (servo far too tiny). "Tinker" must be genuine grab/press/place, not
+  hovering above the board. Take time, double-check every motion in preview
+  (`__pause` + `setJointValue`).
+- Suggested tech approach (not yet built): a spring/IK-driven target system with
+  an action scheduler that BLENDS smoothly between an upright idle underlay and
+  discrete task "clips" (eased, no snapping). Keep the exact-FK floor guard.
 
 ---
 
-## 7. The interaction & experience plan (not built yet)
+## 7. Interaction & experience plan (decided, NOT built yet)
 
-1. **Idle:** the arm is alive on the bench (working over the dev board, gazing,
-   startling at lightning). Left monitor shows live telemetry; right monitor is
-   dark/unplugged.
-2. **Enter (the one interaction):** user clicks → the arm picks up the loose
-   **cable/connector** and **plugs it into the dark monitor** → it boots (a
-   boot sequence on screen) → **camera dollies INTO that screen** → becomes the
-   editorial site. Diegetic — the portfolio is "what's on his machine." No
-   whiteout gimmick. (A tiny Enter-key press was rejected — a cable plug is
-   bigger/clearer.)
-3. **Editorial site (separate, clean, fast, readable):** About / Projects /
-   Résumé / Contact. Recruiter-scannable. Content in §8.
-4. Later polish: boot/loader sequence, sound (servo whirs + ambient, ON by
-   default with mute), performance tiers / mobile fallback.
+- **Two modes, same origin:** the 3D scene is default; a persistent **"Skip to
+  site" button at the bottom** swaps to a fast **2D editorial site** (dark navy +
+  muted white/grey, subtly robotic, subtle life, simple/cohesive), which has a
+  "Back to scene" toggle.
+- **5 clickable hotspots → dark frosted-glass OVERLAY PANELS** (over a dimmed/
+  blurred scene). The old "everything dives into the monitor" plan is SCRAPPED.
+  - **Projects = dev board** → arm FULL manipulation (plug/press) then overlay.
+  - **About = the dark monitor** → arm picks up the loose charging cable/brick and
+    plugs it into the deck to "boot," then overlay. (Arm does NOT reach the
+    monitor itself — it plugs into the deck.)
+  - **Résumé = papers on the tool chest** → camera push-in + highlight (no arm,
+    out of reach).
+  - **Hobbies = ball + Dunks** → camera push-in + highlight (no arm).
+  - **Contact = a taped "open to internships" note on the pegboard** → camera +
+    highlight.
+- **Affordance:** an understated custom scene cursor; hovering a hotspot = teal
+  rim-glow + a game-style sparkle + cursor change.
+- Build order: (1) arm base-revert + feet + Luxo motion + idle life [current],
+  (2) interaction plumbing (raycast hotspots, cursor, hover glow, click→sequence
+  →overlay, dark-glass panel), (3) fill 5 overlays w/ content + the Contact note,
+  (4) 2D editorial site + switch button, (5) polish/sound/mobile.
 
 ---
 
@@ -296,73 +305,91 @@ also currently unused.
 
 - **Identity:** Ekam Kooner · Calgary → Vancouver · ekooner656@gmail.com ·
   linkedin.com/in/ekam-kooner/ · github.com/Ekko656 · devpost.com/ekooner656 ·
-  ekamkooner.com. Assets already in `public/` (headshot.jpg, resume.pdf,
-  projects/*.png|mp4|webm).
-- **About narrative (validated copy, reuse):** "Who is engineering for? … Most
-  of what gets built today is built for the people who need it least… I want to
-  spend my life pointed somewhere else. At the older person who can't reach the
-  top shelf… the hospital short on night staff… the parent who needs an extra
-  set of hands. This is why I'm in Biomedical Engineering at UBC. This is why
-  I'm aiming at humanoid robotics. Tesla Optimus, specifically. Not for the
-  technology. For who the technology is able to serve. Engineering with purpose."
-  Interests: 🏐 Volleyball, 🏀 NBA, 🎮 League, 🎵 Drake, 🥊 Boxing.
-- **Projects (preserve order):** 1) Arm Sim (7-DOF MuJoCo arm, NumPy FK/Jacobian/
-  DLS IK, verified 1e-6m; github.com/Ekko656/arm-sim). 2) Barrage (concurrent API
-  load tester; Java/Spring Boot; barrage-0ajs.onrender.com). 3) HoneyKey
-  (honeypot API + attacker classification; nwHacks Best Cybersecurity finalist;
-  Python/FastAPI/MITRE ATT&CK). 4) UBC Bionics (trans-radial prosthetic, Rust/
-  PyO3/STM32/I²C, CYBATHLON 2028). 5) VEX Robotics (autonomous nav, Alberta #1,
-  Worlds; C++/PID/Pure Pursuit). 6) Ultrasonic Claw (Arduino). 7) Arduino RC Car.
-- **Résumé highlights:** Embedded SWE @ UBC Bionics (Rust↔Python via PyO3,
-  −97.5% latency, I²C BMS). Robotics SWE @ WCHS VEX (odometry/PID/pure-pursuit,
-  team lead, Worlds). Skills: Rust/C/C++/Python/Java/JS-TS, PID, EMG, Fusion360.
-- **Contact:** "Let's talk." · "Open to internships, Summer 2026" (pulsing dot).
+  ekamkooner.com. Assets in `public/` (headshot.jpg, resume.pdf, projects/*).
+- **About (validated copy, reuse):** "Who is engineering for? … Most of what gets
+  built today is built for the people who need it least… the older person who
+  can't reach the top shelf… the hospital short on night staff… the parent who
+  needs an extra set of hands. This is why I'm in Biomedical Engineering at UBC.
+  This is why I'm aiming at humanoid robotics — Tesla Optimus specifically. Not
+  for the technology. For who the technology is able to serve." Interests: 🏐
+  Volleyball, 🏀 NBA, 🎮 League, 🎵 Drake, 🥊 Boxing.
+- **Projects (keep order):** 1) Arm Sim (7-DOF MuJoCo, NumPy FK/Jacobian/DLS IK,
+  verified 1e-6m; github.com/Ekko656/arm-sim). 2) Barrage (concurrent API load
+  tester; Java/Spring Boot). 3) HoneyKey (honeypot API + attacker classification;
+  nwHacks Best Cybersecurity finalist; Python/FastAPI/MITRE ATT&CK). 4) UBC
+  Bionics (trans-radial prosthetic, Rust/PyO3/STM32/I²C, CYBATHLON 2028). 5) VEX
+  Robotics (autonomous nav, Alberta #1, Worlds; C++/PID/Pure Pursuit). 6)
+  Ultrasonic Claw (Arduino). 7) Arduino RC Car.
+- **Résumé highlights:** Embedded SWE @ UBC Bionics (Rust↔Python via PyO3, −97.5%
+  latency, I²C BMS). Robotics SWE @ WCHS VEX (odometry/PID/pure-pursuit, lead,
+  Worlds). Skills: Rust/C/C++/Python/Java/JS-TS, PID, EMG, Fusion360.
+- **Contact:** "Let's talk." · "Open to internships, Summer 2026."
 
 ---
 
-## 9. Known issues / gotchas
+## 9. Working-style / feedback patterns (READ — Ekam is exacting)
 
-- **Arm movement** is the open creative problem (Ekam dislikes the current
-  noise-drift; wants fluid, deliberate, creature-like life — think Pixar Luxo).
-- Unused code, harmless in dev but would fail a strict `tsc --noEmit`: the old
-  keyframe behavior system in So101Arm, `ArcReactor` in Stage,
-  `BlenderPrinter.tsx`/`GlbModel`, and the `public/models/*.glb`.
-- Moving the CAMERA shifts the outdoor tree/parallax through the window — retune
-  `Outdoors` tree x-position if you change the camera.
-- Bench cluster is a `<group position={[0,0,BENCH_Z]}>` — anything meant to sit
-  ON the bench must go inside it (local coords), floor props go outside (world).
-- R3F: `rotation` goes on the `<mesh>`, never on a `<geometry>` (a repeated bug).
+- **NEVER low-poly / boxes+cylinders mushed together.** Extremely detailed +
+  intentional + realistic. Use real reference images (he responds to it) and/or
+  Blender for organic/complex props. This is THE recurring flashpoint.
+- **Clipping is a recurring anger source.** Nothing may intersect anything. Route
+  cables/props against each object's ACTUAL footprint (documented in §4), not by
+  eye. Verify in-preview from close angles every time.
+- **Go in the exact order he lists things.** Refine what exists before adding.
+- **Always commit AND push** after meaningful changes.
+- Concrete opinionated options over vague questions; when he says "you decide,"
+  decide and show a result. Don't re-litigate rejected directions (§10).
+- He iterates HARD; matching jesse-zhou / bruno-simon intentional cohesion is the
+  bar. Verify in-preview before claiming anything is done.
 
 ---
 
-## 10. Memory files (persist across chats, at `~/.claude/.../memory/`)
+## 10. Rejected directions — DO NOT re-propose
 
-- `portfolio-3d-rebuild.md` — project: concept, pipeline, repo, locked decisions.
-- `portfolio-3d-working-style.md` — the aesthetic bar + process rules (the
-  NEVER-low-poly rule, verify-in-preview, source real models, go-in-order).
-- `portfolio-3d-active-tasklist.md` — a recent ordered task list + guardrails.
-- `humanoid-arm-portfolio.md` — the SEPARATE MuJoCo Arm-Sim project (~/humanoid-arm).
-- Index in `MEMORY.md`. Treat THIS HANDOFF.md as the current source of truth
-  where older notes conflict.
+Stock sci-fi kit ("MegaLab"); cozy/tan "house" palette; fairy/LED string lights;
+a glowing arc-reactor hero; low-poly primitive-built shoes/ball/props; the arm
+moving move-to-pose-then-hold (rigid) OR drooping head-down; blind full-machine
+Blender assembly ("mash of parts"); leaving temp/oversized inspection props in
+the live scene; the "single gateway = dive into the monitor" interaction.
 
 ---
 
 ## 11. Reference materials
+
+- **Downloaded references (this session)** in the scratchpad
+  `/private/tmp/claude-501/-Users-ekam/7882187d-8baa-4d42-a235-20e3f05f9238/scratchpad/`:
+  `ball_ref.png` (real basketball, Wikimedia), `shoe_ref.png` (Meshy "Blue Adidas
+  Three-Stripe Sneaker" grey render), `solder_station.jpg` + `solder_iron.jpg`
+  (Wikimedia Weller station + iron). Re-fetch from Wikimedia/Meshy if the
+  scratchpad is gone.
 - **jesse-zhou.com** (Kowloon ramen diorama) + **bruno-simon.com** — the craft
-  bar: cohesive, intentional, baked-lit, small-payload 3D worlds.
-- **Big Hero 6 "Hiro's garage"** (nanobot + Baymax-armor scenes) — the art
-  direction for THIS scene.
-- SO-101 arm source: `TheRobotStudio/SO-ARM100` (a working URDF+STL set is
-  already in `public/so101/`).
+  bar (cohesive, intentional, baked-lit, small-payload).
+- **Big Hero 6 "Hiro's garage"** — the art direction.
+- Blender renders `_preview_ball.png` / `_preview_shoe.png` in `assets-src/blender/`.
 
 ---
 
-## 12. Git history (high level)
-`main` branch, ~30 commits. Arc of the project: baseline import → strip the old
-33MB stock kit → warm-night workshop blockout → detailed rainy-dawn window/
-outdoors → arm Luxo behavior v1 → scale reframe + garage shell → Big Hero 6
-warm overhaul (then corrected off "cozy/tan" toward dark industrial) → dual
-monitors + real tool wall → industrial workbench against the wall + amber light
-→ code-built PC + printer (replacing the Blender "mash") → real electronics on
-the bench → continuous-organic arm motion → basketball + Dunks + spinning fans +
-3-drawer cabinet + real robotics parts. `git log --oneline` for the full list.
+## 12. Memory files (persist across chats, `~/.claude/projects/-Users-ekam/memory/`)
+
+- `portfolio-3d-rebuild.md` — project: concept, pipeline, repo, locked decisions.
+- `portfolio-3d-working-style.md` — the aesthetic bar + process rules (NEVER
+  low-poly, use real meshes/Blender for organic props, verify-in-preview, never
+  leave temp props, always push).
+- `portfolio-3d-interaction-vision.md` — the full dual-experience + arm-life +
+  hotspot decisions (§6/§7 here summarize it; that file has every Q&A decision).
+- `portfolio-3d-active-tasklist.md`, `humanoid-arm-portfolio.md` — older / the
+  separate MuJoCo Arm-Sim project. Index: `MEMORY.md`.
+- Treat THIS HANDOFF.md as source of truth where older notes conflict.
+
+---
+
+## 13. Git history (high level, newest first)
+
+`2abc15c` soldering station (Weller-style) → `89a8971` fix cable clipping + remove
+mouse wire + under-desk outlet → `11f5e8a` power hub + wall outlet + wavy cables +
+parts bin + mouse → `8b169b2` small servo + clean parts bin + tiny caps +
+Apple-style charger → `1b2970f` dock + two-prong plugs + detailed dev board →
+`cf88eec`/`c33ad41`/`de95210` basketball seam iterations + level + monitors gap →
+`134f3af` ball+sneakers rebuilt as Blender GLBs + real pegboard tools + printer
+prints → earlier: PC/printer/electronics/window/outdoors. `git log --oneline` for
+the rest. **The base-flip in So101Arm.tsx is uncommitted and should be reverted.**
