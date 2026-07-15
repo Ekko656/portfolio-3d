@@ -84,8 +84,10 @@ const fbm = (t: number, seed: number) =>
   Math.sin(t * 2.13 + seed * 4.1) * 0.14 +
   Math.sin(t * 0.23 + seed * 5.7) * 0.08 // ~[-1, 1]
 
-const ORG_REST: Pose = [0.0, -0.72, -0.66, -0.35, 0, 0.3] // relaxed, alert-ish base
-const ORG_AMP: Pose = [0.78, 0.32, 0.28, 0.62, 0.72, 0.32] // wander range per joint
+// upright Luxo idle: upper arm near-vertical, forearm up, head tilted up to
+// gaze skyward — never drooping. Wander is mostly yaw + head, little vertical.
+const ORG_REST: Pose = [0.05, -0.05, -1.55, -0.15, 0, 0.28] // stands tall, gazes up
+const ORG_AMP: Pose = [0.5, 0.1, 0.12, 0.3, 0.6, 0.2] // wander range per joint
 const ORG_SPD: Pose = [0.16, 0.13, 0.11, 0.22, 0.29, 0.19] // wander speed per joint
 const ORG_SEED: Pose = [1.1, 3.7, 5.2, 7.9, 2.4, 6.6]
 
@@ -162,7 +164,9 @@ export default function So101Arm() {
         const mesh = o as THREE.Mesh & { material?: THREE.Material & { name?: string } }
         if (mesh.isMesh) {
           const src = String(mesh.userData.src)
-          if (src.includes('waveshare_mounting_plate') || src.includes('base_motor_holder') || src.includes('base_so101_v2')) {
+          // hide only the wide waveshare mounting plate; keep the real SO-101
+          // base + its two little feet stands visible
+          if (src.includes('waveshare_mounting_plate')) {
             mesh.visible = false
             return
           }

@@ -161,50 +161,49 @@ function Keyboard({ position, rotation = [0, 0, 0] }: { position: [number, numbe
 }
 
 function Mouse({ position }: { position: [number, number, number] }) {
-  const SHELL = <meshStandardMaterial color={'#191b21'} metalness={0.22} roughness={0.48} />
+  const SHELL = <meshStandardMaterial color={'#1a1c22'} metalness={0.25} roughness={0.45} />
+  // front = +z (finger buttons / wheel), back = -z (palm hump)
   return (
     <group position={position}>
-      {/* main shell — a bigger, tapered gaming-mouse body resting on the desk */}
-      <mesh position={[0, 0.045, 0]} scale={[1, 0.5, 1.6]} castShadow receiveShadow>
-        <sphereGeometry args={[0.1, 24, 16]} />
+      {/* thin sole footprint on the desk */}
+      <RoundedBox args={[0.13, 0.02, 0.2]} radius={0.011} smoothness={4} position={[0, 0.01, 0]} castShadow receiveShadow>
+        <meshStandardMaterial color={'#101216'} metalness={0.3} roughness={0.55} />
+      </RoundedBox>
+      {/* one continuous tapered shell — an ellipsoid tilted nose-down so the
+          front dips to the desk and the palm hump rises at the back */}
+      <mesh position={[0, 0.032, -0.012]} scale={[0.82, 0.6, 1.24]} rotation={[-0.17, 0, 0]} castShadow>
+        <sphereGeometry args={[0.088, 40, 28]} />
         {SHELL}
       </mesh>
-      {/* left + right click buttons, split by a centre groove */}
-      {[-1, 1].map((s) => (
-        <mesh key={s} position={[s * 0.03, 0.078, 0.07]} scale={[1, 0.45, 1.15]} castShadow>
-          <sphereGeometry args={[0.052, 18, 12]} />
-          <meshStandardMaterial color={'#14161a'} roughness={0.42} />
-        </mesh>
-      ))}
-      <mesh position={[0, 0.088, 0.09]}>
-        <boxGeometry args={[0.006, 0.02, 0.14]} />
-        <meshStandardMaterial color={'#0a0a0c'} roughness={0.6} />
+      {/* button-split seam running down the front half (a thin recessed line) */}
+      <mesh position={[0, 0.083, 0.052]} rotation={[0.32, 0, 0]}>
+        <boxGeometry args={[0.004, 0.012, 0.12]} />
+        <meshStandardMaterial color={'#050506'} roughness={0.7} />
       </mesh>
-      {/* scroll wheel (rubber tread + teal glow) */}
-      <mesh position={[0, 0.096, 0.075]} rotation={[0, 0, Math.PI / 2]} castShadow>
-        <cylinderGeometry args={[0.016, 0.016, 0.016, 14]} />
-        <meshStandardMaterial color={'#0a0a0c'} roughness={0.7} />
+      {/* scroll wheel seated in a slot between the buttons */}
+      <mesh position={[0, 0.093, 0.066]}>
+        <boxGeometry args={[0.022, 0.02, 0.03]} />
+        <meshStandardMaterial color={'#050506'} roughness={0.7} />
       </mesh>
-      <mesh position={[0, 0.1, 0.075]} rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[0.0165, 0.0165, 0.006, 14]} />
-        <meshStandardMaterial color={'#2fd0c0'} emissive={'#1a8078'} emissiveIntensity={1.2} toneMapped={false} />
+      <mesh position={[0, 0.101, 0.066]} rotation={[0, 0, Math.PI / 2]} castShadow>
+        <cylinderGeometry args={[0.013, 0.013, 0.015, 20]} />
+        <meshStandardMaterial color={'#0c0c0e'} roughness={0.6} />
       </mesh>
-      {/* DPI button behind the wheel */}
-      <mesh position={[0, 0.093, 0.02]} castShadow>
-        <boxGeometry args={[0.016, 0.008, 0.014]} />
-        <meshStandardMaterial color={'#2a2c31'} roughness={0.5} />
+      <mesh position={[0, 0.105, 0.066]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.0135, 0.0135, 0.007, 20]} />
+        <meshStandardMaterial color={'#2fd0c0'} emissive={'#1a8078'} emissiveIntensity={1.1} toneMapped={false} />
       </mesh>
-      {/* two thumb buttons on the left flank */}
-      {[0.1, 0.14].map((z) => (
-        <mesh key={z} position={[-0.093, 0.04, z]} rotation={[0, 0, 0.2]} castShadow>
-          <boxGeometry args={[0.014, 0.014, 0.03]} />
+      {/* two flush thumb buttons on the left flank */}
+      {[0.03, 0.062].map((z) => (
+        <mesh key={z} position={[-0.06, 0.045, z]} rotation={[0, 0, 0.35]} castShadow>
+          <boxGeometry args={[0.01, 0.015, 0.026]} />
           <meshStandardMaterial color={'#26282e'} roughness={0.5} />
         </mesh>
       ))}
-      {/* RGB accent strip low around the shell */}
-      <mesh position={[0, 0.02, 0]} scale={[1, 0.16, 1.62]}>
-        <sphereGeometry args={[0.101, 24, 8]} />
-        <meshStandardMaterial color={'#2fd0c0'} emissive={'#1f8f86'} emissiveIntensity={0.7} toneMapped={false} transparent opacity={0.55} />
+      {/* subtle logo glow on the palm hump */}
+      <mesh position={[0, 0.088, -0.055]} rotation={[0.5, 0, 0]}>
+        <circleGeometry args={[0.012, 20]} />
+        <meshStandardMaterial color={'#2fd0c0'} emissive={'#1f8f86'} emissiveIntensity={0.9} toneMapped={false} />
       </mesh>
     </group>
   )
